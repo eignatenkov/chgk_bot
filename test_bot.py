@@ -30,3 +30,6 @@ dispatcher.addTelegramCommandHandler('ask', ask)
 dispatcher.addTelegramCommandHandler('start', start)
 
 updater.start_polling()
+
+updater.idle()
+
