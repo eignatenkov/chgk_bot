@@ -89,15 +89,25 @@ def unknown_command(bot, update):
 
 
 @run_async
+def play(bot, update):
+    bot.sendMessage(update.message.chat_id, text='Вопрос 1')
+    logger.info("posted")
+    sleep(50)
+    bot.sendMessage(update.message.chat_id, text ='10 секунд')
+    logger.info("posted")
+    sleep(10)
+    bot.sendMessage(update.message.chat_id, text='Время')
+    for i in range(10, -1, -1):
+        sleep(1)
+        bot.sendMessage(update.message.chat_id, text=str(i))
+
+@run_async
 def message(bot, update):
     """
     Example for an asynchronous handler. It's not guaranteed that replies will
     be in order when using @run_async.
     """
-
-    sleep(2)  # IO-heavy operation here
-    bot.sendMessage(update.message.chat_id, text='Echo: %s' %
-                                                 update.message.text)
+    pass
 
 
 def error(bot, update, error):
@@ -130,7 +140,8 @@ def unknown_cli_command(bot, update):
 
 def main():
     # Create the EventHandler and pass it your bot's token.
-    token = '170527211:AAHjwfp0qhPTLwhZzvz0ckmtII-Fv94sBFw'
+    # token = '170527211:AAHjwfp0qhPTLwhZzvz0ckmtII-Fv94sBFw'
+    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     updater = Updater(token, workers=2)
 
     # Get the dispatcher to register handlers
@@ -139,6 +150,7 @@ def main():
     dp.addTelegramCommandHandler("start", start)
     dp.addTelegramCommandHandler("help", help)
     dp.addTelegramCommandHandler("recent", recent)
+    dp.addTelegramCommandHandler("play", play)
     dp.addUnknownTelegramCommandHandler(unknown_command)
     dp.addTelegramMessageHandler(message)
     dp.addTelegramRegexHandler('.*', any_message)
