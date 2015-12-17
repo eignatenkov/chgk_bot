@@ -22,6 +22,7 @@ import logging
 import sys
 import urllib2
 from lxml import etree
+from xml_tools import tournament_info, q_and_a
 
 root = logging.getLogger()
 root.setLevel(logging.INFO)
@@ -37,11 +38,15 @@ last_chat_id = 0
 
 logger = logging.getLogger(__name__)
 
+# dict of dicts with information for every chatting user
+state = dict()
+
 
 # Command Handlers
 def start(bot, update):
     """ Answer in Telegram """
     bot.sendMessage(update.message.chat_id, text='Hi!')
+    state[update.message.chat_id] = dict()
 
 
 def help(bot, update):
@@ -49,25 +54,38 @@ def help(bot, update):
     bot.sendMessage(update.message.chat_id, text='Help!')
 
 
+def status(bot, update):
+    """
+    see full 'state' information for given chat
+    """
+    logger.info(str(state[update.message.chat_id]['tournament']))
+
+
 def recent(bot, update):
     """
     Выдача списка недавно добавленных турниров по команде /recent
     """
+    chat_id = update.message.chat_id
     recent_url = urllib2.urlopen("http://db.chgk.info/last/feed")
     recent_data = recent_url.read()
     recent_url.close()
     recent_xml = etree.fromstring(recent_data)
-    recent_tournaments = []
+    if chat_id not in state.keys():
+        state[chat_id] = dict()
+    state[chat_id]['tournaments'] = []
     for item in recent_xml[0]:
         if item.tag == 'item':
             tournament = dict()
             for child in item:
                 tournament[child.tag] = child.text
-            recent_tournaments.append(tournament)
+            state[chat_id]['tournaments'].append(tournament)
+    # default tournament is the most recently added tournament
+    state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
+
     text = ''
-    for index, tournament in enumerate(recent_tournaments[:10]):
-        text += str(index+1) + '. ' +tournament['title'] + '\n'
-    bot.sendMessage(update.message.chat_id, text=text)
+    for index, tournament in enumerate(state[chat_id]['tournaments'][:10]):
+        text += str(index+1) + '. ' + tournament['title'] + '\n'
+    bot.sendMessage(chat_id, text=text)
 
 
 def any_message(bot, update):
@@ -88,18 +106,87 @@ def unknown_command(bot, update):
     bot.sendMessage(update.message.chat_id, text='Command not recognized!')
 
 
-@run_async
 def play(bot, update):
-    bot.sendMessage(update.message.chat_id, text='Вопрос 1')
-    logger.info("posted")
+    chat_id = update.message.chat_id
+    if chat_id not in state or 'tournaments' not in state[chat_id]:
+        bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent')
+        return 0
+    parameter = update.message.text.strip(' /play')
+    try:
+        if int(parameter) in range(1, 11):
+            state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][int(parameter) - 1]['link']
+    except:
+        pass
+    current = tournament_info(state[chat_id]['tournament_id'])
+    state[chat_id]['tour'] = 1
+    state[chat_id]['question'] = 1
+    state[chat_id].update(current)
+    bot.sendMessage(chat_id, text=state[chat_id]['description'])
+    bot.sendMessage(chat_id, text='/ask - задать первый вопрос')
+
+
+@run_async
+def ask(bot, update):
+    chat_id = update.message.chat_id
+    if chat_id not in state or 'tournaments' not in state[chat_id]:
+        bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent и /play')
+        return 0
+
+    if 'tour' not in state[chat_id]:
+        bot.sendMessage(chat_id, text='Не выбран турнир. Сделайте /play')
+        return 0
+
+    question = q_and_a(state[chat_id]['tournament_id'], state[chat_id]['tour'], state[chat_id]['question'])
+    if state[chat_id]['question'] == 0:
+        bot.sendMessage(chat_id, text='Турнир закончен. Выберите новый турнир')
+        return 0
+
+    if state[chat_id]['question'] == 1:
+        bot.sendMessage(chat_id, text=state[chat_id]['tour_titles'][state[chat_id]['tour'] - 1])
+        if state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1]:
+            bot.sendMessage(chat_id, text=state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1])
+        if state[chat_id]['tour_info'][state[chat_id]['tour'] - 1]:
+            bot.sendMessage(chat_id, text=state[chat_id]['tour_info'][state[chat_id]['tour'] - 1])
+    bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question']))
+    sleep(1)
+    # Если есть картинка, отправим ее
+    if 'q_image' in question:
+        bot.sendMessage(chat_id, text=question['q_image'])
+    bot.sendMessage(chat_id, text=question['question'])
+    if state[chat_id]['question'] < state[chat_id]['n_questions'][state[chat_id]['tour'] - 1]:
+        state[chat_id]['question'] += 1
+    elif state[chat_id]['tour'] < state[chat_id]['n_tours']:
+        state[chat_id]['tour'] += 1
+        state[chat_id]['question'] = 1
+    else:
+        state[chat_id]['tour'] = 0
+        state[chat_id]['question'] = 0
+    print state[chat_id]['tour'], state[chat_id]['question']
+    sleep(10)
+    bot.sendMessage(chat_id, text='Время пошло!')
     sleep(50)
-    bot.sendMessage(update.message.chat_id, text ='10 секунд')
+    bot.sendMessage(chat_id, text='10 секунд')
     logger.info("posted")
     sleep(10)
-    bot.sendMessage(update.message.chat_id, text='Время')
+    bot.sendMessage(chat_id, text='Время!')
     for i in range(10, -1, -1):
+        bot.sendMessage(chat_id, text=str(i))
         sleep(1)
-        bot.sendMessage(update.message.chat_id, text=str(i))
+    bot.sendMessage(chat_id, text=u'Ответ: ' + question['answer'])
+    sleep(5)
+    if question['comments']:
+        bot.sendMessage(chat_id, text=u'Комментарий: ' + question['comments'])
+    sleep(2)
+    bot.sendMessage(chat_id, text=u'Источники: ' + question['sources'])
+    sleep(2)
+    bot.sendMessage(chat_id, text=u'Авторы: ' + question['authors'])
+    if state[chat_id]['question'] == 1:
+        bot.sendMessage(chat_id, text=u'Конец тура.')
+    elif state[chat_id]['question'] == 0:
+        bot.sendMessage(chat_id, text=u'Конец турнира.')
+    else:
+        bot.sendMessage(chat_id, text=u'Следующий вопрос - /ask')
+
 
 @run_async
 def message(bot, update):
@@ -142,7 +229,7 @@ def main():
     # Create the EventHandler and pass it your bot's token.
     # token = '170527211:AAHjwfp0qhPTLwhZzvz0ckmtII-Fv94sBFw'
     token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
-    updater = Updater(token, workers=2)
+    updater = Updater(token)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -151,6 +238,8 @@ def main():
     dp.addTelegramCommandHandler("help", help)
     dp.addTelegramCommandHandler("recent", recent)
     dp.addTelegramCommandHandler("play", play)
+    dp.addTelegramCommandHandler("ask", ask)
+    dp.addTelegramCommandHandler("status", status)
     dp.addUnknownTelegramCommandHandler(unknown_command)
     dp.addTelegramMessageHandler(message)
     dp.addTelegramRegexHandler('.*', any_message)
