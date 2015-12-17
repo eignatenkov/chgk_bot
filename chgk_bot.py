@@ -174,7 +174,7 @@ def ask(bot, update):
         sleep(1)
     bot.sendMessage(chat_id, text=u'Ответ: ' + question['answer'])
     sleep(5)
-    if question['comments']:
+    if 'comments' in question:
         bot.sendMessage(chat_id, text=u'Комментарий: ' + question['comments'])
     sleep(2)
     bot.sendMessage(chat_id, text=u'Источники: ' + question['sources'])
