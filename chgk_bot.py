@@ -51,7 +51,11 @@ def start(bot, update):
 
 def help(bot, update):
     """ Answer in Telegram """
-    bot.sendMessage(update.message.chat_id, text='Help!')
+    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
+           u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
+           u"последний загруженный пакет.\n" \
+           u"/ask - задать очередной вопрос."
+    bot.sendMessage(update.message.chat_id, text=text)
 
 
 def status(bot, update):
@@ -125,6 +129,17 @@ def play(bot, update):
     bot.sendMessage(chat_id, text='/ask - задать первый вопрос')
 
 
+def next_tour(bot, update):
+    """
+    играть следующий тур
+    """
+    chat_id = update.message.chat_id
+    state[chat_id]['break'] = True
+    state[chat_id]['tour'] += 1
+    state[chat_id]['question'] = 1
+    ask(bot, update)
+
+
 @run_async
 def ask(bot, update):
     chat_id = update.message.chat_id
@@ -169,11 +184,12 @@ def ask(bot, update):
     logger.info("posted")
     sleep(10)
     bot.sendMessage(chat_id, text='Время!')
-    for i in range(10, -1, -1):
-        bot.sendMessage(chat_id, text=str(i))
-        sleep(1)
+    # for i in range(10, -1, -1):
+    #     bot.sendMessage(chat_id, text=str(i))
+    #     sleep(1)
+    sleep(10)
     bot.sendMessage(chat_id, text=u'Ответ: ' + question['answer'])
-    sleep(5)
+    sleep(2)
     if 'comments' in question:
         bot.sendMessage(chat_id, text=u'Комментарий: ' + question['comments'])
     sleep(2)
@@ -181,7 +197,7 @@ def ask(bot, update):
     sleep(2)
     bot.sendMessage(chat_id, text=u'Авторы: ' + question['authors'])
     if state[chat_id]['question'] == 1:
-        bot.sendMessage(chat_id, text=u'Конец тура.')
+        bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос следующего тура - /ask')
     elif state[chat_id]['question'] == 0:
         bot.sendMessage(chat_id, text=u'Конец турнира.')
     else:
@@ -239,6 +255,7 @@ def main():
     dp.addTelegramCommandHandler("recent", recent)
     dp.addTelegramCommandHandler("play", play)
     dp.addTelegramCommandHandler("ask", ask)
+    dp.addTelegramCommandHandler("next_tour", next_tour)
     dp.addTelegramCommandHandler("status", status)
     dp.addUnknownTelegramCommandHandler(unknown_command)
     dp.addTelegramMessageHandler(message)
