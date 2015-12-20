@@ -2,17 +2,15 @@
 # -*- coding: utf-8 -*-
 
 """
-This Bot uses the Updater class to handle the bot.
+chgk_bot for telegram
 
-First, a few handler functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and the CLI-Loop is entered, where all text inputs are
-inserted into the update queue for the bot to handle.
+uses python-telegram-bot library
 
-Usage:
-Basic Echobot example, repeats messages. Reply to last chat from the command
-line by typing "/reply <text>"
-Type 'stop' on the command line to stop the bot.
+/recent - list of 10 most recently uploaded to db.chgk.info tournaments
+/play [number] - play one of the tournaments. By default - most recent.
+/ask - ask next question
+/next_tour - skip remaining questions of current tour, ask first question from
+the next.
 """
 
 from telegram import Updater
@@ -44,13 +42,13 @@ state = dict()
 
 # Command Handlers
 def start(bot, update):
-    """ Answer in Telegram """
-    bot.sendMessage(update.message.chat_id, text='Hi!')
+    """ Greetings when start bot """
+    bot.sendMessage(update.message.chat_id, text=u'Вращайте волчок')
     state[update.message.chat_id] = dict()
 
 
 def help(bot, update):
-    """ Answer in Telegram """
+    """ help command """
     text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
            u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
            u"последний загруженный пакет.\n" \
@@ -60,14 +58,14 @@ def help(bot, update):
 
 def status(bot, update):
     """
-    see full 'state' information for given chat
+    writes to terminal full 'state' information for given chat
     """
     logger.info(str(state[update.message.chat_id]['tournament']))
 
 
 def recent(bot, update):
     """
-    Выдача списка недавно добавленных турниров по команде /recent
+    /recent - print out list of ten most recently added tournaments
     """
     chat_id = update.message.chat_id
     recent_url = urllib2.urlopen("http://db.chgk.info/last/feed")
@@ -111,6 +109,7 @@ def unknown_command(bot, update):
 
 
 def play(bot, update):
+    """ /play tournament """
     chat_id = update.message.chat_id
     if chat_id not in state or 'tournaments' not in state[chat_id]:
         bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent')
@@ -131,7 +130,7 @@ def play(bot, update):
 
 def next_tour(bot, update):
     """
-    играть следующий тур
+    /next_tour - play next tour
     """
     chat_id = update.message.chat_id
     state[chat_id]['break'] = True
@@ -142,6 +141,10 @@ def next_tour(bot, update):
 
 @run_async
 def ask(bot, update):
+    """ /ask current question, wait 50 secs, warn that 10 secs are left,
+    wait 10 secs, tell that time is up, wait 10 secs, print answer and
+    additional info, get ready to ask next question.
+    """
     chat_id = update.message.chat_id
     if chat_id not in state or 'tournaments' not in state[chat_id]:
         bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent и /play')
@@ -243,7 +246,6 @@ def unknown_cli_command(bot, update):
 
 def main():
     # Create the EventHandler and pass it your bot's token.
-    # token = '170527211:AAHjwfp0qhPTLwhZzvz0ckmtII-Fv94sBFw'
     token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     updater = Updater(token)
 

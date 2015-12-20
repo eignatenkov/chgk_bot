@@ -1,11 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+""" tools for getting questions and tournaments from db.chgk.info
+"""
+
 import urllib2
 from lxml import etree, html
 from html.parser import HTMLParser
 
 
 def neat(text):
+    """
+    texts of questions from db.chgk.info contain many unnecessary newline
+    symbols. This function replaces such symbols with spaces and keeps only
+    those newline symbols that go in pairs.
+    :param text: input string
+    :return: edited text
+    """
     text = text.replace('\n\n', '_zzz_')
     text = text.replace('\n', ' ')
     text = text.replace('_zzz_', '\n\n')
@@ -13,6 +23,9 @@ def neat(text):
 
 
 class MLStripper(HTMLParser):
+    """ class from stackoverflow post to strip all HTML tags from the text
+    of the question
+    """
     def __init__(self):
         self.reset()
         self.strict = False
@@ -27,12 +40,23 @@ class MLStripper(HTMLParser):
 
 
 def strip_tags(html):
+    """
+    function that uses MLStripper and strips all HTML tags from text
+    :param html: input text
+    :return: edited text without any HTML tags in it
+    """
     s = MLStripper()
     s.feed(html)
     return s.get_data()
 
 
 def tournament_info(url):
+    """
+    get tournament info by it's url
+    :param url: url of tournament in db.chgk.info
+    :return: dict with info about this tournament: description, number of
+    tours, number of questions, editors, etc.
+    """
     url += '/xml'
     tournament_url = urllib2.urlopen(url)
     tournament = etree.fromstring(tournament_url.read())
@@ -60,6 +84,14 @@ def tournament_info(url):
 
 
 def q_and_a(tournament, tour, question):
+    """
+    get all necessary info about the question: text, handouts (if present),
+    answer, comments, author, sources.
+    :param tournament: tournament id
+    :param tour: tour number
+    :param question: question number
+    :return: dict with info about the question
+    """
     url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(tournament.split('/')[-1], tour, question)
     question_url = urllib2.urlopen(url)
     quest = etree.fromstring(question_url.read())
