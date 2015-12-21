@@ -45,6 +45,8 @@ def strip_tags(html):
     :param html: input text
     :return: edited text without any HTML tags in it
     """
+    # сначала заменим тэги для тире на --, чтобы не потерять их
+    html = html.replace('&mdash;', '--')
     s = MLStripper()
     s.feed(html)
     return s.get_data()
