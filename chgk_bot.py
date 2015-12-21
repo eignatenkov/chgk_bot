@@ -87,6 +87,26 @@ def recent(bot, update):
     text = ''
     for index, tournament in enumerate(state[chat_id]['tournaments'][:10]):
         text += str(index+1) + '. ' + tournament['title'] + '\n'
+    state[chat_id]['last_shown'] = 10
+    bot.sendMessage(chat_id, text=text)
+
+
+def more(bot, update):
+    """
+    show more tournaments from loaded
+    """
+    chat_id = update.message.chat_id
+    if 'tournaments' not in state[chat_id] or 'last_shown' not in state[chat_id]:
+        bot.sendMessage(chat_id, text='Нет скачанных турниров')
+        return 0
+    last = state[chat_id]['last_shown']
+    end = min(last+10, len(state[chat_id]['tournaments']))
+    if last == end:
+        bot.sendMessage(chat_id, text='Больше нет')
+    text = ''
+    for i in range(last, end):
+        text += str(i+1) + '. ' + state[chat_id]['tournaments'][i]['title'] + '\n'
+    state[chat_id]['last_shown'] = end
     bot.sendMessage(chat_id, text=text)
 
 
@@ -116,7 +136,7 @@ def play(bot, update):
         return 0
     parameter = update.message.text.strip(' /play')
     try:
-        if int(parameter) in range(1, 11):
+        if int(parameter) in range(1, len(state[chat_id]['tournaments'])):
             state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][int(parameter) - 1]['link']
     except:
         pass
@@ -255,6 +275,7 @@ def main():
     dp.addTelegramCommandHandler("start", start)
     dp.addTelegramCommandHandler("help", help)
     dp.addTelegramCommandHandler("recent", recent)
+    dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
     dp.addTelegramCommandHandler("ask", ask)
     dp.addTelegramCommandHandler("next_tour", next_tour)
