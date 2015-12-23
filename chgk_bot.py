@@ -141,7 +141,7 @@ def play(bot, update):
         pass
     current = tournament_info(state[chat_id]['tournament_id'])
     state[chat_id]['tour'] = 1
-    state[chat_id]['question'] = 1
+    state[chat_id]['question_number'] = 1
     state[chat_id].update(current)
     bot.sendMessage(chat_id, text=state[chat_id]['description'])
     bot.sendMessage(chat_id, text='/ask - задать первый вопрос')
@@ -160,7 +160,7 @@ def next_tour(bot, update):
         while state[chat_id]['playing']:
             sleep(.5)
     state[chat_id]['tour'] += 1
-    state[chat_id]['question'] = 1
+    state[chat_id]['question_number'] = 1
     ask(bot, update)
 
 
@@ -185,38 +185,40 @@ def ask(bot, update):
         bot.sendMessage(chat_id, text='Не выбран турнир. Сделайте /play')
         return 0
 
-    if state[chat_id]['question'] == 0:
+    if state[chat_id]['question_number'] == 0:
         bot.sendMessage(chat_id, text='Турнир закончен. Выберите новый турнир')
         return 0
 
-    if state[chat_id]['question'] == 1:
+    if state[chat_id]['question_number'] == 1:
         bot.sendMessage(chat_id, text=state[chat_id]['tour_titles'][state[chat_id]['tour'] - 1])
         if state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1]:
             bot.sendMessage(chat_id, text=state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1])
         if state[chat_id]['tour_info'][state[chat_id]['tour'] - 1]:
             bot.sendMessage(chat_id, text=state[chat_id]['tour_info'][state[chat_id]['tour'] - 1])
 
-    question = q_and_a(state[chat_id]['tournament_id'], state[chat_id]['tour'], state[chat_id]['question'])
+    state[chat_id]['question'] = q_and_a(state[chat_id]['tournament_id'],
+                                         state[chat_id]['tour'],
+                                         state[chat_id]['question_number'])
     if state[chat_id]['playing']:
         state[chat_id]['break'] = True
         while state[chat_id]['playing']:
             sleep(0.5)
     state[chat_id]['playing'] = True
-    bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question']))
+    bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question_number']))
     sleep(1)
     # Если есть картинка, отправим ее
-    if 'q_image' in question:
-        bot.sendMessage(chat_id, text=question['q_image'])
-    bot.sendMessage(chat_id, text=question['question'])
-    if state[chat_id]['question'] < state[chat_id]['n_questions'][state[chat_id]['tour'] - 1]:
-        state[chat_id]['question'] += 1
+    if 'q_image' in state[chat_id]['question']:
+        bot.sendMessage(chat_id, text=state[chat_id]['question']['q_image'])
+    bot.sendMessage(chat_id, text=state[chat_id]['question']['question'])
+    if state[chat_id]['question_number'] < state[chat_id]['n_questions'][state[chat_id]['tour'] - 1]:
+        state[chat_id]['question_number'] += 1
     elif state[chat_id]['tour'] < state[chat_id]['n_tours']:
         state[chat_id]['tour'] += 1
-        state[chat_id]['question'] = 1
+        state[chat_id]['question_number'] = 1
     else:
         state[chat_id]['tour'] = 0
-        state[chat_id]['question'] = 0
-    print state[chat_id]['tour'], state[chat_id]['question']
+        state[chat_id]['question_number'] = 0
+    print state[chat_id]['tour'], state[chat_id]['question_number']
     wait(chat_id, 10)
     if state[chat_id]['break']:
         state[chat_id]['playing'] = False
@@ -244,22 +246,47 @@ def ask(bot, update):
         state[chat_id]['playing'] = False
         state[chat_id]['break'] = False
         return
-    bot.sendMessage(chat_id, text=u'Ответ: ' + question['answer'])
+    bot.sendMessage(chat_id, text=u'Ответ: ' + state[chat_id]['question']['answer'])
     sleep(2)
-    if 'comments' in question:
-        bot.sendMessage(chat_id, text=u'Комментарий: ' + question['comments'])
+    if 'comments' in state[chat_id]['question']:
+        bot.sendMessage(chat_id, text=u'Комментарий: ' + state[chat_id]['question']['comments'])
     sleep(2)
-    bot.sendMessage(chat_id, text=u'Источники: ' + question['sources'])
+    bot.sendMessage(chat_id, text=u'Источники: ' + state[chat_id]['question']['sources'])
     sleep(2)
-    bot.sendMessage(chat_id, text=u'Авторы: ' + question['authors'])
-    if state[chat_id]['question'] == 1:
+    bot.sendMessage(chat_id, text=u'Авторы: ' + state[chat_id]['question']['authors'])
+    if state[chat_id]['question_number'] == 1:
         bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос следующего тура - /ask')
-    elif state[chat_id]['question'] == 0:
+    elif state[chat_id]['question_number'] == 0:
         bot.sendMessage(chat_id, text=u'Конец турнира.')
     else:
         bot.sendMessage(chat_id, text=u'Следующий вопрос - /ask')
 
     state[chat_id]['playing'] = False
+
+
+def answer(bot, update):
+    """
+    Досрочный ответ
+    :return: постит ответ не дожидаясь конца отсчета времени
+    """
+    chat_id = update.message.chat_id
+    if state[chat_id]['playing']:
+        state[chat_id]['break'] = True
+        while state[chat_id]['playing']:
+            sleep(.5)
+        bot.sendMessage(chat_id, text=u'Ответ: ' + state[chat_id]['question']['answer'])
+        if 'comments' in state[chat_id]['question']:
+            bot.sendMessage(chat_id, text=u'Комментарий: ' + state[chat_id]['question']['comments'])
+        bot.sendMessage(chat_id, text=u'Источники: ' + state[chat_id]['question']['sources'])
+        bot.sendMessage(chat_id, text=u'Авторы: ' + state[chat_id]['question']['authors'])
+        if state[chat_id]['question_number'] == 1:
+            bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос следующего тура - /ask')
+        elif state[chat_id]['question_number'] == 0:
+            bot.sendMessage(chat_id, text=u'Конец турнира.')
+        else:
+            bot.sendMessage(chat_id, text=u'Следующий вопрос - /ask')
+    else:
+        bot.sendMessage(chat_id, text=u'Не задан вопрос')
 
 
 def error(bot, update, error):
@@ -304,6 +331,7 @@ def main():
     dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
     dp.addTelegramCommandHandler("ask", ask)
+    dp.addTelegramCommandHandler("answer", answer)
     dp.addTelegramCommandHandler("next_tour", next_tour)
     dp.addTelegramCommandHandler("status", status)
     dp.addUnknownTelegramCommandHandler(unknown_command)
