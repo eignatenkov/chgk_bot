@@ -18,9 +18,7 @@ from telegram.dispatcher import run_async
 from time import sleep
 import logging
 import sys
-import urllib2
-from lxml import etree
-from xml_tools import tournament_info, q_and_a
+from xml_tools import tournament_info, q_and_a, recent_tournaments
 
 root = logging.getLogger()
 root.setLevel(logging.INFO)
@@ -43,16 +41,21 @@ state = dict()
 # Command Handlers
 def start(bot, update):
     """ Greetings when start bot """
+    chat_id = update.message.chat_id
+    state[chat_id] = dict()
+    state[chat_id]['break'] = False
+    state[chat_id]['playing'] = False
     bot.sendMessage(update.message.chat_id, text=u'Вращайте волчок')
-    state[update.message.chat_id] = dict()
 
 
 def help(bot, update):
     """ help command """
-    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
+    text = u"/recent - список последних десяти загруженных в базу пакетов\n " \
+           u"/more - следующие 10 турниров\n" \
            u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
            u"последний загруженный пакет.\n" \
-           u"/ask - задать очередной вопрос."
+           u"/ask - задать очередной вопрос.\n " \
+           u"/next_tour - следующий тур"
     bot.sendMessage(update.message.chat_id, text=text)
 
 
@@ -60,7 +63,12 @@ def status(bot, update):
     """
     writes to terminal full 'state' information for given chat
     """
-    logger.info(str(state[update.message.chat_id]['tournament']))
+    for key, value in state[update.message.chat_id].items():
+        if key != 'tournaments':
+            try:
+                print key, ': ', value.encode('utf-8')
+            except:
+                print key, ': ', str(value)
 
 
 def recent(bot, update):
@@ -68,19 +76,10 @@ def recent(bot, update):
     /recent - print out list of ten most recently added tournaments
     """
     chat_id = update.message.chat_id
-    recent_url = urllib2.urlopen("http://db.chgk.info/last/feed")
-    recent_data = recent_url.read()
-    recent_url.close()
-    recent_xml = etree.fromstring(recent_data)
     if chat_id not in state.keys():
-        state[chat_id] = dict()
-    state[chat_id]['tournaments'] = []
-    for item in recent_xml[0]:
-        if item.tag == 'item':
-            tournament = dict()
-            for child in item:
-                tournament[child.tag] = child.text
-            state[chat_id]['tournaments'].append(tournament)
+        bot.sendMessage(chat_id, text='/start the bot')
+        return
+    state[chat_id]['tournaments'] = recent_tournaments()
     # default tournament is the most recently added tournament
     state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
 
@@ -153,10 +152,22 @@ def next_tour(bot, update):
     /next_tour - play next tour
     """
     chat_id = update.message.chat_id
-    state[chat_id]['break'] = True
+    if state[chat_id]['tour'] == state[chat_id]['n_tours']:
+        bot.sendMessage(chat_id, text='Это последний тур турнира')
+        return
+    if state[chat_id]['playing']:
+        state[chat_id]['break'] = True
+        while state[chat_id]['playing']:
+            sleep(.5)
     state[chat_id]['tour'] += 1
     state[chat_id]['question'] = 1
     ask(bot, update)
+
+
+def wait(chat_id, time):
+    while not state[chat_id]['break'] and time >= 0:
+        sleep(1)
+        time -= 1
 
 
 @run_async
@@ -174,7 +185,6 @@ def ask(bot, update):
         bot.sendMessage(chat_id, text='Не выбран турнир. Сделайте /play')
         return 0
 
-    question = q_and_a(state[chat_id]['tournament_id'], state[chat_id]['tour'], state[chat_id]['question'])
     if state[chat_id]['question'] == 0:
         bot.sendMessage(chat_id, text='Турнир закончен. Выберите новый турнир')
         return 0
@@ -185,6 +195,13 @@ def ask(bot, update):
             bot.sendMessage(chat_id, text=state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1])
         if state[chat_id]['tour_info'][state[chat_id]['tour'] - 1]:
             bot.sendMessage(chat_id, text=state[chat_id]['tour_info'][state[chat_id]['tour'] - 1])
+
+    question = q_and_a(state[chat_id]['tournament_id'], state[chat_id]['tour'], state[chat_id]['question'])
+    if state[chat_id]['playing']:
+        state[chat_id]['break'] = True
+        while state[chat_id]['playing']:
+            sleep(0.5)
+    state[chat_id]['playing'] = True
     bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question']))
     sleep(1)
     # Если есть картинка, отправим ее
@@ -200,17 +217,33 @@ def ask(bot, update):
         state[chat_id]['tour'] = 0
         state[chat_id]['question'] = 0
     print state[chat_id]['tour'], state[chat_id]['question']
-    sleep(10)
+    wait(chat_id, 10)
+    if state[chat_id]['break']:
+        state[chat_id]['playing'] = False
+        state[chat_id]['break'] = False
+        return
     bot.sendMessage(chat_id, text='Время пошло!')
-    sleep(50)
+    wait(chat_id, 50)
+    if state[chat_id]['break']:
+        state[chat_id]['playing'] = False
+        state[chat_id]['break'] = False
+        return
     bot.sendMessage(chat_id, text='10 секунд')
     logger.info("posted")
-    sleep(10)
+    wait(chat_id, 10)
+    if state[chat_id]['break']:
+        state[chat_id]['playing'] = False
+        state[chat_id]['break'] = False
+        return
     bot.sendMessage(chat_id, text='Время!')
     # for i in range(10, -1, -1):
     #     bot.sendMessage(chat_id, text=str(i))
     #     sleep(1)
-    sleep(10)
+    wait(chat_id, 10)
+    if state[chat_id]['break']:
+        state[chat_id]['playing'] = False
+        state[chat_id]['break'] = False
+        return
     bot.sendMessage(chat_id, text=u'Ответ: ' + question['answer'])
     sleep(2)
     if 'comments' in question:
@@ -226,14 +259,7 @@ def ask(bot, update):
     else:
         bot.sendMessage(chat_id, text=u'Следующий вопрос - /ask')
 
-
-@run_async
-def message(bot, update):
-    """
-    Example for an asynchronous handler. It's not guaranteed that replies will
-    be in order when using @run_async.
-    """
-    pass
+    state[chat_id]['playing'] = False
 
 
 def error(bot, update, error):
@@ -281,7 +307,6 @@ def main():
     dp.addTelegramCommandHandler("next_tour", next_tour)
     dp.addTelegramCommandHandler("status", status)
     dp.addUnknownTelegramCommandHandler(unknown_command)
-    dp.addTelegramMessageHandler(message)
     dp.addTelegramRegexHandler('.*', any_message)
 
     dp.addStringCommandHandler('reply', cli_reply)
@@ -290,8 +315,8 @@ def main():
 
     dp.addErrorHandler(error)
 
-    # Start the Bot and store the update Queue, so we can insert updates
-    update_queue = updater.start_polling(poll_interval=0.1, timeout=20)
+    # Start the Bot
+    updater.start_polling(poll_interval=0.1, timeout=120)
 
     # Start CLI-Loop
     while True:
@@ -305,9 +330,6 @@ def main():
             updater.stop()
             break
 
-        # else, put the text into the update queue
-        elif len(text) > 0:
-            update_queue.put(text)  # Put command into queue
 
 if __name__ == '__main__':
     main()

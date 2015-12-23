@@ -52,6 +52,25 @@ def strip_tags(html):
     return s.get_data()
 
 
+def recent_tournaments():
+    """
+    list of recent tournaments
+    :return: list of recent tournaments
+    """
+    recent_url = urllib2.urlopen("http://db.chgk.info/last/feed")
+    recent_data = recent_url.read()
+    recent_url.close()
+    recent_xml = etree.fromstring(recent_data)
+    tournaments = []
+    for item in recent_xml[0]:
+        if item.tag == 'item':
+            tournament = dict()
+            for child in item:
+                tournament[child.tag] = child.text
+            tournaments.append(tournament)
+    return tournaments
+
+
 def tournament_info(url):
     """
     get tournament info by it's url
@@ -71,7 +90,7 @@ def tournament_info(url):
     if tournament.findtext('Info') is not None:
         answer += '\n' + neat(tournament.findtext('Info'))
     result['description'] = answer
-    result['n_tours'] = tournament.findtext('ChildrenNum')
+    result['n_tours'] = int(tournament.findtext('ChildrenNum'))
     result['n_questions'] = []
     result['tour_titles'] = []
     result['tour_info'] = []
