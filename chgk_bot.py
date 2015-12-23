@@ -241,9 +241,6 @@ def ask(bot, update):
         state[chat_id]['break'] = False
         return
     bot.sendMessage(chat_id, text='Время!')
-    # for i in range(10, -1, -1):
-    #     bot.sendMessage(chat_id, text=str(i))
-    #     sleep(1)
     wait(chat_id, 10)
     if state[chat_id]['break']:
         state[chat_id]['playing'] = False
