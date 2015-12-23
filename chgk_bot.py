@@ -132,7 +132,7 @@ def play(bot, update):
     chat_id = update.message.chat_id
     if chat_id not in state or 'tournaments' not in state[chat_id]:
         bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent')
-        return 0
+        return
     parameter = update.message.text.strip(' /play')
     try:
         if int(parameter) in range(1, len(state[chat_id]['tournaments'])):
@@ -140,6 +140,9 @@ def play(bot, update):
     except:
         pass
     current = tournament_info(state[chat_id]['tournament_id'])
+    if current == '':
+        bot.sendMessage(chat_id, text='Ошибка при загрузке турнира. Выберите другой турнир')
+        return
     state[chat_id]['tour'] = 1
     state[chat_id]['question_number'] = 1
     state[chat_id].update(current)

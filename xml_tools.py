@@ -79,7 +79,10 @@ def tournament_info(url):
     tours, number of questions, editors, etc.
     """
     url += '/xml'
-    tournament_url = urllib2.urlopen(url)
+    try:
+        tournament_url = urllib2.urlopen(url)
+    except urllib2.HTTPError:
+        return ''
     tournament = etree.fromstring(tournament_url.read())
     tournament_url.close()
     result = dict()
