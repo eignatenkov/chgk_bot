@@ -324,7 +324,7 @@ def unknown_cli_command(bot, update):
 def main():
     # Create the EventHandler and pass it your bot's token.
     token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
-    updater = Updater(token)
+    updater = Updater(token, workers=100)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
