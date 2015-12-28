@@ -50,11 +50,12 @@ def start(bot, update):
 
 def help(bot, update):
     """ help command """
-    text = u"/recent - список последних десяти загруженных в базу пакетов\n " \
+    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
            u"/more - следующие 10 турниров\n" \
            u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
-           u"последний загруженный пакет.\n" \
-           u"/ask - задать очередной вопрос.\n " \
+           u"последний загруженный пакет\n" \
+           u"/ask - задать очередной вопрос\n" \
+           u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
            u"/next_tour - следующий тур"
     bot.sendMessage(update.message.chat_id, text=text)
 
@@ -65,10 +66,11 @@ def status(bot, update):
     """
     for key, value in state[update.message.chat_id].items():
         if key != 'tournaments':
+            print key, ': ',
             try:
-                print key, ': ', value.encode('utf-8')
+                value.encode('utf-8')
             except:
-                print key, ': ', str(value)
+                print str(value)
 
 
 def recent(bot, update):
@@ -81,7 +83,8 @@ def recent(bot, update):
         return
     state[chat_id]['tournaments'] = recent_tournaments()
     # default tournament is the most recently added tournament
-    state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
+    if 'tournament_id' not in state[chat_id] or state[chat_id].get('question_number', 0) == 0:
+        state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
 
     text = ''
     for index, tournament in enumerate(state[chat_id]['tournaments'][:10]):
@@ -221,7 +224,7 @@ def ask(bot, update):
     else:
         state[chat_id]['tour'] = 0
         state[chat_id]['question_number'] = 0
-    print state[chat_id]['tour'], state[chat_id]['question_number']
+    print 'next: ', state[chat_id]['tour'], state[chat_id]['question_number']
     wait(chat_id, 10)
     if state[chat_id]['break']:
         state[chat_id]['playing'] = False
@@ -234,7 +237,6 @@ def ask(bot, update):
         state[chat_id]['break'] = False
         return
     bot.sendMessage(chat_id, text='10 секунд')
-    logger.info("posted")
     wait(chat_id, 10)
     if state[chat_id]['break']:
         state[chat_id]['playing'] = False
@@ -248,6 +250,8 @@ def ask(bot, update):
         return
     bot.sendMessage(chat_id, text=u'Ответ: ' + state[chat_id]['question']['answer'])
     sleep(2)
+    if 'pass_criteria' in state[chat_id]['question']:
+        bot.sendMessage(chat_id, text=u'Зачет: ' + state[chat_id]['question']['pass_criteria'])
     if 'comments' in state[chat_id]['question']:
         bot.sendMessage(chat_id, text=u'Комментарий: ' + state[chat_id]['question']['comments'])
     sleep(2)
