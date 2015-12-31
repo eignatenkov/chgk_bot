@@ -211,6 +211,7 @@ def ask(bot, update):
         while state[chat_id]['playing']:
             sleep(0.5)
     state[chat_id]['playing'] = True
+    logger.info('current question: ' + state[chat_id]['tour'] + ' ' + state[chat_id]['question_number'])
     bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question_number']))
     sleep(1)
     # Если есть картинка, отправим ее
@@ -225,7 +226,7 @@ def ask(bot, update):
     else:
         state[chat_id]['tour'] = 0
         state[chat_id]['question_number'] = 0
-    print 'next: ', state[chat_id]['tour'], state[chat_id]['question_number']
+    logger.info('next question: ' + state[chat_id]['tour'] + ' ' + state[chat_id]['question_number'])
     wait(chat_id, 10)
     if state[chat_id]['break']:
         state[chat_id]['playing'] = False
