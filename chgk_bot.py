@@ -45,7 +45,16 @@ def start(bot, update):
     state[chat_id] = dict()
     state[chat_id]['break'] = False
     state[chat_id]['playing'] = False
-    bot.sendMessage(update.message.chat_id, text=u'Вращайте волчок')
+    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
+           u"/more - следующие 10 турниров\n" \
+           u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
+           u"последний загруженный пакет\n" \
+           u"/ask - задать очередной вопрос\n" \
+           u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
+           u"/next_tour - следующий тур\n" \
+           u"Сыграть последний загруженный турнир, начиная с первого вопроса - последовательно выполнить " \
+           u"/start, /recent, /play, /ask."
+    bot.sendMessage(update.message.chat_id, text=text)
 
 
 def help(bot, update):
