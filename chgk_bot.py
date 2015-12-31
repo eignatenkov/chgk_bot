@@ -23,7 +23,8 @@ from xml_tools import tournament_info, q_and_a, recent_tournaments
 root = logging.getLogger()
 root.setLevel(logging.INFO)
 
-ch = logging.StreamHandler(sys.stdout)
+
+ch = logging.FileHandler("chgk_bot.log")
 ch.setLevel(logging.INFO)
 formatter = \
     logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
