@@ -17,7 +17,6 @@ from telegram import Updater
 from telegram.dispatcher import run_async
 from time import sleep
 import logging
-import sys
 from xml_tools import tournament_info, q_and_a, recent_tournaments
 
 root = logging.getLogger()
@@ -178,7 +177,7 @@ def wait(chat_id, time):
 
 
 @run_async
-def ask(bot, update):
+def ask(bot, update, **kwargs):
     """ /ask current question, wait 50 secs, warn that 10 secs are left,
     wait 10 secs, tell that time is up, wait 10 secs, print answer and
     additional info, get ready to ask next question.
