@@ -53,7 +53,7 @@ def start(bot, update):
            u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
            u"/next_tour - следующий тур\n" \
            u"Сыграть последний загруженный турнир, начиная с первого вопроса - последовательно выполнить " \
-           u"/start, /recent, /play, /ask."
+           u"/start, /recent, /play, /ask"
     bot.sendMessage(update.message.chat_id, text=text)
 
 
