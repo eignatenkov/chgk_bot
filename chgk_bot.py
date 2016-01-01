@@ -91,6 +91,11 @@ def recent(bot, update):
         bot.sendMessage(chat_id, text='/start the bot')
         return
     state[chat_id]['tournaments'] = recent_tournaments()
+    if len(state[chat_id]['tournaments']) == 0:
+        bot.sendMessage(chat_id, text='сайт db.chgk.info не возвращает список '
+                                      'турниров. Попробуйте позже')
+        state[chat_id].pop('tournaments')
+        return
     # default tournament is the most recently added tournament
     if 'tournament_id' not in state[chat_id] or state[chat_id].get('question_number', 0) == 0:
         state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
