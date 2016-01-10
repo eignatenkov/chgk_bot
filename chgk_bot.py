@@ -153,7 +153,7 @@ def play(bot, update):
     parameter = update.message.text.strip(' /play')
     if parameter != '':
         try:
-            if int(parameter) in range(1, len(state[chat_id]['tournaments']) + 1):
+            if 0 < int(parameter) < len(state[chat_id]['tournaments']) + 1:
                 state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][int(parameter) - 1]['link']
             else:
                 bot.sendMessage(chat_id, text='Турнира с таким номером нет среди загруженных. Играем первый турнир')
@@ -233,8 +233,8 @@ def ask(bot, update, **kwargs):
     bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question_number']))
     sleep(1)
     # Если есть картинка, отправим ее
-    if 'q_image' in state[chat_id]['question']:
-        bot.sendMessage(chat_id, text=state[chat_id]['question']['q_image'])
+    if 'question_image' in state[chat_id]['question']:
+        bot.sendMessage(chat_id, text=state[chat_id]['question']['question_image'])
     bot.sendMessage(chat_id, text=state[chat_id]['question']['question'])
     if state[chat_id]['question_number'] < state[chat_id]['n_questions'][state[chat_id]['tour'] - 1]:
         state[chat_id]['question_number'] += 1
@@ -343,9 +343,9 @@ def unknown_cli_command(bot, update):
 
 def main():
     # Create the EventHandler and pass it your bot's token.
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
 
     # Get the dispatcher to register handlers

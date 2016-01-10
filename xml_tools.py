@@ -122,6 +122,10 @@ def q_and_a(tournament, tour, question):
     question_url.close()
     result = dict()
     result['question'] = neat(strip_tags(quest.findtext('Question')))
+    xhtml = html.document_fromstring(quest.findtext('Question'))
+    imageurl = xhtml.xpath('//img/@src')
+    if len(imageurl) > 0:
+        result['question_image'] = imageurl[0]
     result['answer'] = neat(strip_tags(quest.findtext('Answer')))
     if quest.findtext('Comments'):
         result['comments'] = neat(strip_tags(quest.findtext('Comments')))
@@ -129,10 +133,6 @@ def q_and_a(tournament, tour, question):
         result['pass_criteria'] = neat(strip_tags(quest.findtext('PassCriteria')))
     result['sources'] = neat(strip_tags(quest.findtext('Sources')))
     result['authors'] = strip_tags(quest.findtext('Authors'))
-    xhtml = html.document_fromstring(quest.findtext('Question'))
-    imageurl = xhtml.xpath('//img/@src')
-    if len(imageurl) > 0:
-        result['q_image'] = imageurl[0]
     return result
 
 if __name__ == "__main__":
