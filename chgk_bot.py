@@ -151,11 +151,16 @@ def play(bot, update):
         bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent')
         return
     parameter = update.message.text.strip(' /play')
-    try:
-        if int(parameter) in range(1, len(state[chat_id]['tournaments'])):
-            state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][int(parameter) - 1]['link']
-    except:
-        pass
+    if parameter != '':
+        try:
+            if int(parameter) in range(1, len(state[chat_id]['tournaments']) + 1):
+                state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][int(parameter) - 1]['link']
+            else:
+                bot.sendMessage(chat_id, text='Турнира с таким номером нет среди загруженных. Играем первый турнир')
+                state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
+        except:
+            bot.sendMessage(chat_id, text='Параметр не распознан, играем первый турнир')
+            state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
     current = tournament_info(state[chat_id]['tournament_id'])
     if current == '':
         bot.sendMessage(chat_id, text='Ошибка при загрузке турнира. Выберите другой турнир')
@@ -339,6 +344,8 @@ def unknown_cli_command(bot, update):
 def main():
     # Create the EventHandler and pass it your bot's token.
     token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    # token for the test bot
+    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
 
     # Get the dispatcher to register handlers
