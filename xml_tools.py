@@ -86,13 +86,13 @@ def tournament_info(url):
     tournament = etree.fromstring(tournament_url.read())
     tournament_url.close()
     result = dict()
-    answer = tournament.find('Title').text
-    answer += '\n' + tournament.find('PlayedAt').text
+    result['title'] = tournament.find('Title').text
+    description = '\n' + tournament.find('PlayedAt').text
     if tournament.find('Editors').text is not None:
-        answer += '\n' + u'Редакторы: ' + tournament.find('Editors').text
+        description += '\n' + u'Редакторы: ' + tournament.find('Editors').text
     if tournament.findtext('Info') is not None:
-        answer += '\n' + neat(tournament.findtext('Info'))
-    result['description'] = answer
+        description += '\n' + neat(tournament.findtext('Info'))
+    result['description'] = description
     result['n_tours'] = int(tournament.findtext('ChildrenNum'))
     result['n_questions'] = []
     result['tour_titles'] = []
