@@ -1,64 +1,74 @@
-# -*- coding: utf-8 -*-
-
 from telegram import Updater
-from telegram.dispatcher import run_async
+from bot_tools import Game
+
+all_games = {}
 
 
 def start(bot, update):
-    pass
+    chat_id = update.message.chat_id
+    all_games[chat_id] = Game(bot, chat_id)
+    all_games[chat_id].post("Successful init!")
+
+
+def recent(bot, update):
+    chat_id = update.message.chat_id
+    all_games[chat_id].get_recent()
+
+
+def test_queue(bot, update):
+    chat_id = update.message.chat_id
+
+    def queue_function(bot):
+        return all_games[chat_id].post('15 seconds passed')
+    job_queue.put(queue_function, 15, repeat=False)
+    all_games[chat_id].post("Wait for it")
 
 
 def help(bot, update):
     """ help command """
-    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
-           u"/more - следующие 10 турниров\n" \
-           u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
-           u"последний загруженный пакет\n" \
-           u"/ask - задать очередной вопрос\n" \
-           u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
-           u"/next_tour - следующий тур"
+    text = "/recent - список последних десяти загруженных в базу пакетов\n" \
+           "/more - следующие 10 турниров\n" \
+           "/play [номер пакета] - играть пакет из списка с переданным " \
+           "номером. Если номер не передан - самый последний загруженный " \
+           "пакет\n" \
+           "/ask - задать очередной вопрос\n" \
+           "/answer - увидеть ответ, не дожидаясь конца минуты\n" \
+           "/next_tour - следующий тур"
     bot.sendMessage(update.message.chat_id, text=text)
 
+
 def main():
-    # Create the EventHandler and pass it your bot's token.
+    global job_queue
     # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
     token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
+    job_queue = updater.job_queue
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
     dp.addTelegramCommandHandler("start", start)
     dp.addTelegramCommandHandler("help", help)
+    dp.addTelegramCommandHandler("test", test_queue)
     dp.addTelegramCommandHandler("recent", recent)
-    dp.addTelegramCommandHandler("more", more)
-    dp.addTelegramCommandHandler("play", play)
-    dp.addTelegramCommandHandler("ask", ask)
-    dp.addTelegramCommandHandler("answer", answer)
-    dp.addTelegramCommandHandler("next_tour", next_tour)
-    dp.addTelegramCommandHandler("status", status)
-
-    dp.addUnknownTelegramCommandHandler(unknown_command)
-    dp.addTelegramRegexHandler('.*', any_message)
-
-
-    dp.addErrorHandler(error)
+    # dp.addTelegramCommandHandler("more", more)
+    # dp.addTelegramCommandHandler("play", play)
+    # dp.addTelegramCommandHandler("ask", ask)
+    # dp.addTelegramCommandHandler("answer", answer)
+    # dp.addTelegramCommandHandler("next_tour", next_tour)
+    # dp.addTelegramCommandHandler("status", status)
+    #
+    # dp.addUnknownTelegramCommandHandler(unknown_command)
+    # dp.addTelegramRegexHandler('.*', any_message)
+    #
+    #
+    # dp.addErrorHandler(error)
 
     # Start the Bot
     updater.start_polling(poll_interval=0.1, timeout=120)
 
-    # Start CLI-Loop
-    while True:
-        try:
-            text = raw_input()
-        except NameError:
-            text = input()
-
-        # Gracefully stop the event handler
-        if text == 'stop':
-            updater.stop()
-            break
+    updater.idle()
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from xml_tools import q_and_a, tournament_info
+from xml_tools import q_and_a, tournament_info, recent_tournaments
 from constants import TRANSLATIONS
 from weakref import WeakKeyDictionary
 
@@ -72,6 +72,34 @@ class Tournament(object):
         return self
 
     # def next(self):
+
+
+class Game(object):
+    def __init__(self, bot, chat_id):
+        self.bot = bot
+        self.chat_id = chat_id
+        self.current_question = None
+        self.tournaments_list = None
+        self.last_shown_tournament = 0
+
+    def post(self, message):
+        self.bot.sendMessage(self.chat_id, message)
+
+    def get_recent(self):
+        self.tournaments_list = recent_tournaments()
+        if len(self.tournaments_list) == 0:
+            self.post('сайт db.chgk.info не возвращает список турниров. Попробуйте позже')
+            return
+        # # default tournament is the most recently added tournament
+        # if 'tournament_id' not in state[chat_id] or state[chat_id].get('question_number', 0) == 0:
+        #     state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
+
+        text = ''
+        for index, tournament in enumerate(self.tournaments_list[:10]):
+            text += str(index+1) + '. ' + tournament['title'] + '\n'
+        self.last_shown_tournament = 10
+        self.post(text)
+
 
 if __name__ == "__main__":
     test_question = Question('har14-h2', 2, 2)
