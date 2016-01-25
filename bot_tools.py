@@ -46,14 +46,16 @@ class Question(object):
 
     @property
     def full_answer(self):
-        return u'{0}{1}{2}{3}{4}'.format(self.answer, self.pass_criteria, self.comments, self.sources, self.authors)
+        return u'{0}{1}{2}{3}{4}'.format(self.answer, self.pass_criteria,
+                                         self.comments, self.sources,
+                                         self.authors)
 
 
 class Tournament(object):
-    title = XMLField('title')
-    description = XMLField('description')
-    number_of_tours = XMLField('n_tours')
-    number_of_questions = XMLField('n_questions')
+    # title = XMLField('title')
+    # description = XMLField('description')
+    # number_of_tours = XMLField('n_tours')
+    # number_of_questions = XMLField('n_questions')
 
     def __init__(self, url):
         self.url = url
@@ -68,17 +70,33 @@ class Tournament(object):
         self.current_tour = 1
         self.current_question = 1
 
+    @property
+    def full_description(self):
+        return '{0}{1}'.format(self.title, self.description)
+
     def __iter__(self):
         return self
 
-    # def next(self):
+    def __next__(self):
+        if self.current_tour <= self.number_of_tours:
+            question = Question(self.url,
+                                self.current_tour,
+                                self.current_question)
+            self.current_question += 1
+            if self.current_question > \
+                    self.number_of_questions[self.current_tour - 1]:
+                self.current_question = 1
+                self.current_tour += 1
+            return question
+        else:
+            raise StopIteration
 
 
 class Game(object):
     def __init__(self, bot, chat_id):
         self.bot = bot
         self.chat_id = chat_id
-        self.current_question = None
+        self.current_tournament = None
         self.tournaments_list = None
         self.last_shown_tournament = 0
 
@@ -88,22 +106,29 @@ class Game(object):
     def get_recent(self):
         self.tournaments_list = recent_tournaments()
         if len(self.tournaments_list) == 0:
-            self.post('сайт db.chgk.info не возвращает список турниров. Попробуйте позже')
+            self.post('сайт db.chgk.info не возвращает список турниров. '
+                      'Попробуйте позже')
             return
-        # # default tournament is the most recently added tournament
-        # if 'tournament_id' not in state[chat_id] or state[chat_id].get('question_number', 0) == 0:
-        #     state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
-
         text = ''
         for index, tournament in enumerate(self.tournaments_list[:10]):
             text += str(index+1) + '. ' + tournament['title'] + '\n'
         self.last_shown_tournament = 10
         self.post(text)
 
+    def play(self, tournament_id):
+        try:
+            tournament_url = self.tournaments_list[tournament_id-1]['link']
+        except TypeError:
+            self.post("Загрузите список турниров с помощью /recent")
+            return
+        self.current_tournament = Tournament(tournament_url)
+        self.post(self.current_tournament.full_description)
+        self.post("/ask - задать первый вопрос")
+
 
 if __name__ == "__main__":
-    test_question = Question('har14-h2', 2, 2)
-    print test_question.question, test_question.full_answer
-    test_question = Question('har14-h2', 2, 3)
-    print test_question.question, test_question.full_answer
+    test_tournament = Tournament('http://db.chgk.info/tour/vdi15-03')
+    for question in test_tournament:
+        print(question.question)
+
 

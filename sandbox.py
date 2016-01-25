@@ -62,6 +62,7 @@ def set(bot, update, args):
                 return
             interval = due
             bot.sendMessage(chat_id, text='Beep! {} seconds have passed'.format(interval))
+            job_queue.put(alarm, due, repeat=False)
 
         # Add job to queue
         job_queue.put(alarm, due, repeat=False)
@@ -71,6 +72,12 @@ def set(bot, update, args):
         bot.sendMessage(chat_id, text='Usage: /set <seconds>')
     except ValueError:
         bot.sendMessage(chat_id, text='Usage: /set <seconds>')
+
+
+def stop(bot, update):
+    global indexer
+    indexer = 0
+    bot.sendMessage(update.message.chat_id, 'Phew!')
 
 
 def error(bot, update, error):
@@ -91,6 +98,7 @@ def main():
     # on different commands - answer in Telegram
     dp.addTelegramCommandHandler("start", start)
     dp.addTelegramCommandHandler("help", start)
+    dp.addTelegramCommandHandler("stop", stop)
     dp.addTelegramCommandHandler("set", set)
 
     # log all errors
