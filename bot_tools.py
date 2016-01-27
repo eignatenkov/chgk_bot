@@ -20,8 +20,13 @@ class XMLField(object):
 
     def __get__(self, instance, owner):
         if self.data[instance]:
-            return u'{0}: {1}\n'.format(TRANSLATIONS[self.field_name],
-                                        self.data[instance])
+            if self.field_name == 'question':
+                return u'{0} {1}: {2}\n'.format(TRANSLATIONS[self.field_name],
+                                                instance.question_number,
+                                                self.data[instance])
+            else:
+                return u'{0}: {1}\n'.format(TRANSLATIONS[self.field_name],
+                                            self.data[instance])
         else:
             return ''
 
@@ -30,8 +35,6 @@ class Question(object):
     """
     question with all its fields
     """
-    question = XMLField('question')
-    question_image = XMLField('question_image')
     answer = XMLField('answer')
     pass_criteria = XMLField('pass_criteria')
     comments = XMLField('comments')
@@ -46,8 +49,10 @@ class Question(object):
         :return: instance of Question with all fields filled
         """
         question_dict = q_and_a(tournament_id, tour_number, question_number)
-        self.question = question_dict
-        self.question_image = question_dict
+        self.id = (tournament_id, tour_number, question_number)
+        self.question_number = question_number
+        self.question = question_dict.get('question', '')
+        self.question_image = question_dict.get('question_image', '')
         self.answer = question_dict
         self.pass_criteria = question_dict
         self.comments = question_dict
@@ -121,6 +126,8 @@ class Game(object):
         self.current_tournament = None
         self.tournaments_list = None
         self.last_shown_tournament = 0
+        self.state = None
+        self.current_answer = None
 
     def post(self, message):
         """
@@ -159,6 +166,20 @@ class Game(object):
         self.current_tournament = Tournament(tournament_url)
         self.post(self.current_tournament.full_description)
         self.post("/ask - задать первый вопрос")
+
+    def ask(self):
+        try:
+            question = next(self.current_tournament)
+            self.state = question.id
+            self.current_answer = question.full_answer
+            return question
+        except TypeError:
+            self.post("Выберите турнир - /play [номер турнира]")
+            return
+        except StopIteration:
+            self.post("Сыграны все вопросы турнира. "
+                      "Выберите турнир - /play [номер турнира]")
+            return
 
 
 if __name__ == "__main__":

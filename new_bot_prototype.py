@@ -2,6 +2,7 @@
 Bot you can play with
 """
 import logging
+from time import sleep
 from telegram import Updater
 from bot_tools import Game
 
@@ -44,13 +45,53 @@ def play(bot, update, args):
         bot.sendMessage(chat_id, "/start the bot")
 
 
-def test_queue(bot, update):
+def ask(bot, update):
     chat_id = update.message.chat_id
+    try:
+        question = all_games[chat_id].ask()
+        current_state = all_games[chat_id].state
+        all_games[chat_id].post('Вопрос {}'.format(question.question_number))
+        sleep(1)
+        if question.question_image:
+            all_games[chat_id].post(question.question_image)
+        all_games[chat_id].post(question.question)
 
-    def queue_function(bot):
-        return all_games[chat_id].post('15 seconds passed')
-    job_queue.put(queue_function, 15, repeat=False)
-    all_games[chat_id].post("Wait for it")
+        def read_question(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post('Время пошло!')
+
+        def ten_seconds(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post('10 секунд')
+
+        def time_is_up(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post('Время!')
+
+        def post_answer(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post(question.full_answer)
+                all_games[chat_id].post('Следующий вопрос: /ask')
+        job_queue.put(read_question, 10, repeat=False)
+        job_queue.put(ten_seconds, 50, repeat=False)
+        job_queue.put(time_is_up, 60, repeat=False)
+        job_queue.put(post_answer, 70, repeat=False)
+    except KeyError:
+        bot.sendMessage(chat_id, "/start the bot")
+    except AttributeError:
+        return
+
+
+def answer(bot, update):
+    chat_id = update.message.chat_id
+    try:
+        all_games[chat_id].post(all_games[chat_id].current_answer)
+        all_games[chat_id].post('Следующий вопрос: /ask')
+        all_games[chat_id].state = None
+    except KeyError:
+        bot.sendMessage(chat_id, "/start the bot")
+    except AttributeError:
+        return
 
 
 def help(bot, update):
@@ -68,8 +109,10 @@ def help(bot, update):
 
 # def echo(bot, update):
 #     if update.message.sticker:
-#         bot.sendMessage(update.message.chat_id, text=update.message.sticker.file_id)
-#     bot.sendSticker(update.message.chat_id, sticker='BQADAgADGQADyIsGAAE2WnfSWOhfUgI')
+#         bot.sendMessage(update.message.chat_id,
+# text=update.message.sticker.file_id)
+#     bot.sendSticker(update.message.chat_id,
+# sticker='BQADAgADGQADyIsGAAE2WnfSWOhfUgI')
 
 
 def main():
@@ -89,8 +132,8 @@ def main():
     # dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
     # dp.addTelegramMessageHandler(echo)
-    # dp.addTelegramCommandHandler("ask", ask)
-    # dp.addTelegramCommandHandler("answer", answer)
+    dp.addTelegramCommandHandler("ask", ask)
+    dp.addTelegramCommandHandler("answer", answer)
     # dp.addTelegramCommandHandler("next_tour", next_tour)
     # dp.addTelegramCommandHandler("status", status)
     #
