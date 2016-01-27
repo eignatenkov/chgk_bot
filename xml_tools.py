@@ -4,8 +4,8 @@
 """
 
 from urllib.request import urlopen, HTTPError
-from lxml import etree, html
 from html.parser import HTMLParser
+from lxml import etree, html
 
 
 def neat(text):

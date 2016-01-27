@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 TRANSLATIONS = {
     'question': u'Вопрос',
     'answer': u'Ответ',

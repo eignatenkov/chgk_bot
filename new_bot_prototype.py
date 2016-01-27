@@ -1,11 +1,14 @@
+"""
+Bot you can play with
+"""
+import logging
 from telegram import Updater
 from bot_tools import Game
-import logging
 
 # Enable logging
 logging.basicConfig(
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO)
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +66,12 @@ def help(bot, update):
     bot.sendMessage(update.message.chat_id, text=text)
 
 
+# def echo(bot, update):
+#     if update.message.sticker:
+#         bot.sendMessage(update.message.chat_id, text=update.message.sticker.file_id)
+#     bot.sendSticker(update.message.chat_id, sticker='BQADAgADGQADyIsGAAE2WnfSWOhfUgI')
+
+
 def main():
     global job_queue
     # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
@@ -79,6 +88,7 @@ def main():
     dp.addTelegramCommandHandler("recent", recent)
     # dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
+    # dp.addTelegramMessageHandler(echo)
     # dp.addTelegramCommandHandler("ask", ask)
     # dp.addTelegramCommandHandler("answer", answer)
     # dp.addTelegramCommandHandler("next_tour", next_tour)

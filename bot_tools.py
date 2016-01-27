@@ -1,11 +1,15 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""
+Implementation of classes Question, Tournament and Game
+"""
+from weakref import WeakKeyDictionary
 from xml_tools import q_and_a, tournament_info, recent_tournaments
 from constants import TRANSLATIONS
-from weakref import WeakKeyDictionary
 
 
 class XMLField(object):
+    """
+    descriptor class for Question fields
+    """
     def __init__(self, field_name, default_value=''):
         self.field_name = field_name
         self.default_value = default_value
@@ -16,12 +20,16 @@ class XMLField(object):
 
     def __get__(self, instance, owner):
         if self.data[instance]:
-            return u'{0}: {1}\n'.format(TRANSLATIONS[self.field_name], self.data[instance])
+            return u'{0}: {1}\n'.format(TRANSLATIONS[self.field_name],
+                                        self.data[instance])
         else:
             return ''
 
 
 class Question(object):
+    """
+    question with all its fields
+    """
     question = XMLField('question')
     question_image = XMLField('question_image')
     answer = XMLField('answer')
@@ -32,8 +40,10 @@ class Question(object):
 
     def __init__(self, tournament_id, tour_number, question_number):
         """
-        :param data: словарь необходимых полей: вопрос, ответ, комментарий, зачет, пр.
-        :return:
+        :param tournament_id:
+        :param tour_number:
+        :param question_number:
+        :return: instance of Question with all fields filled
         """
         question_dict = q_and_a(tournament_id, tour_number, question_number)
         self.question = question_dict
@@ -46,12 +56,18 @@ class Question(object):
 
     @property
     def full_answer(self):
+        """
+        :return: text of answer with all the complementary fields
+        """
         return u'{0}{1}{2}{3}{4}'.format(self.answer, self.pass_criteria,
                                          self.comments, self.sources,
                                          self.authors)
 
 
 class Tournament(object):
+    """
+    class for tournament
+    """
     # title = XMLField('title')
     # description = XMLField('description')
     # number_of_tours = XMLField('n_tours')
@@ -72,6 +88,9 @@ class Tournament(object):
 
     @property
     def full_description(self):
+        """
+        :return: string with title and description of the tournament
+        """
         return '{0}{1}'.format(self.title, self.description)
 
     def __iter__(self):
@@ -93,6 +112,9 @@ class Tournament(object):
 
 
 class Game(object):
+    """
+    implements game process for the bot
+    """
     def __init__(self, bot, chat_id):
         self.bot = bot
         self.chat_id = chat_id
@@ -101,9 +123,17 @@ class Game(object):
         self.last_shown_tournament = 0
 
     def post(self, message):
+        """
+        :param message: text string
+        :return: sends message to the chat with chat_id = self.chat_id
+        """
         self.bot.sendMessage(self.chat_id, message)
 
     def get_recent(self):
+        """
+        :return: loads list of recent tournaments to self.tournaments_list;
+        posts list of first 10 tournaments to the chat
+        """
         self.tournaments_list = recent_tournaments()
         if len(self.tournaments_list) == 0:
             self.post('сайт db.chgk.info не возвращает список турниров. '
@@ -116,6 +146,11 @@ class Game(object):
         self.post(text)
 
     def play(self, tournament_id):
+        """
+        :param tournament_id: id of a tournament from self.tournaments_list
+        :return: loads tournament into self.current_tournaments; posts
+        description of a tournament
+        """
         try:
             tournament_url = self.tournaments_list[tournament_id-1]['link']
         except TypeError:
@@ -128,7 +163,5 @@ class Game(object):
 
 if __name__ == "__main__":
     test_tournament = Tournament('http://db.chgk.info/tour/vdi15-03')
-    for question in test_tournament:
-        print(question.question)
-
-
+    for q in test_tournament:
+        print(q.question)

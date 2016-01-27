@@ -47,12 +47,14 @@ def start(bot, update):
     state[chat_id]['playing'] = False
     text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
            u"/more - следующие 10 турниров\n" \
-           u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
+           u"/play [номер пакета] - играть пакет из списка с переданным " \
+           u"номером. Если номер не передан - самый " \
            u"последний загруженный пакет\n" \
            u"/ask - задать очередной вопрос\n" \
            u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
            u"/next_tour - следующий тур\n" \
-           u"Сыграть последний загруженный турнир, начиная с первого вопроса - последовательно выполнить " \
+           u"Сыграть последний загруженный турнир, начиная с первого " \
+           u"вопроса - последовательно выполнить " \
            u"/start, /recent, /play, /ask"
     bot.sendMessage(update.message.chat_id, text=text)
 
@@ -61,7 +63,8 @@ def help(bot, update):
     """ help command """
     text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
            u"/more - следующие 10 турниров\n" \
-           u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
+           u"/play [номер пакета] - играть пакет из списка с переданным " \
+           u"номером. Если номер не передан - самый " \
            u"последний загруженный пакет\n" \
            u"/ask - задать очередной вопрос\n" \
            u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
@@ -75,11 +78,11 @@ def status(bot, update):
     """
     for key, value in state[update.message.chat_id].items():
         if key != 'tournaments':
-            print key, ': ',
+            print(key, ': ',)
             try:
                 value.encode('utf-8')
             except:
-                print str(value)
+                print(str(value))
 
 
 def recent(bot, update):
@@ -97,8 +100,10 @@ def recent(bot, update):
         state[chat_id].pop('tournaments')
         return
     # default tournament is the most recently added tournament
-    if 'tournament_id' not in state[chat_id] or state[chat_id].get('question_number', 0) == 0:
-        state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
+    if 'tournament_id' not in state[chat_id] or \
+                    state[chat_id].get('question_number', 0) == 0:
+        state[chat_id]['tournament_id'] = \
+            state[chat_id]['tournaments'][0]['link']
 
     text = ''
     for index, tournament in enumerate(state[chat_id]['tournaments'][:10]):
@@ -112,7 +117,8 @@ def more(bot, update):
     show more tournaments from loaded
     """
     chat_id = update.message.chat_id
-    if 'tournaments' not in state[chat_id] or 'last_shown' not in state[chat_id]:
+    if 'tournaments' not in state[chat_id] or \
+                    'last_shown' not in state[chat_id]:
         bot.sendMessage(chat_id, text='Нет скачанных турниров')
         return 0
     last = state[chat_id]['last_shown']
@@ -121,7 +127,8 @@ def more(bot, update):
         bot.sendMessage(chat_id, text='Больше нет')
     text = ''
     for i in range(last, end):
-        text += str(i+1) + '. ' + state[chat_id]['tournaments'][i]['title'] + '\n'
+        text += str(i+1) + '. ' + \
+                state[chat_id]['tournaments'][i]['title'] + '\n'
     state[chat_id]['last_shown'] = end
     bot.sendMessage(chat_id, text=text)
 
@@ -154,16 +161,23 @@ def play(bot, update):
     if parameter != '':
         try:
             if 0 < int(parameter) < len(state[chat_id]['tournaments']) + 1:
-                state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][int(parameter) - 1]['link']
+                state[chat_id]['tournament_id'] = \
+                    state[chat_id]['tournaments'][int(parameter) - 1]['link']
             else:
-                bot.sendMessage(chat_id, text='Турнира с таким номером нет среди загруженных. Играем первый турнир')
-                state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
+                bot.sendMessage(chat_id,
+                                text='Турнира с таким номером нет среди '
+                                     'загруженных. Играем первый турнир')
+                state[chat_id]['tournament_id'] = \
+                    state[chat_id]['tournaments'][0]['link']
         except:
-            bot.sendMessage(chat_id, text='Параметр не распознан, играем первый турнир')
-            state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
+            bot.sendMessage(chat_id, text='Параметр не распознан, '
+                                          'играем первый турнир')
+            state[chat_id]['tournament_id'] = \
+                state[chat_id]['tournaments'][0]['link']
     current = tournament_info(state[chat_id]['tournament_id'])
     if current == '':
-        bot.sendMessage(chat_id, text='Ошибка при загрузке турнира. Выберите другой турнир')
+        bot.sendMessage(chat_id, text='Ошибка при загрузке турнира. '
+                                      'Выберите другой турнир')
         return
     state[chat_id]['tour'] = 1
     state[chat_id]['question_number'] = 1
@@ -203,7 +217,8 @@ def ask(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in state or 'tournaments' not in state[chat_id]:
-        bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent и /play')
+        bot.sendMessage(chat_id,
+                        'Нет списка турниров. Сделайте /recent и /play')
         return 0
 
     if 'tour' not in state[chat_id]:
@@ -215,11 +230,14 @@ def ask(bot, update, **kwargs):
         return 0
 
     if state[chat_id]['question_number'] == 1:
-        bot.sendMessage(chat_id, text=state[chat_id]['tour_titles'][state[chat_id]['tour'] - 1])
+        bot.sendMessage(chat_id,
+                        state[chat_id]['tour_titles'][state[chat_id]['tour'] - 1])
         if state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1]:
-            bot.sendMessage(chat_id, text=state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1])
+            bot.sendMessage(chat_id,
+                            state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1])
         if state[chat_id]['tour_info'][state[chat_id]['tour'] - 1]:
-            bot.sendMessage(chat_id, text=state[chat_id]['tour_info'][state[chat_id]['tour'] - 1])
+            bot.sendMessage(chat_id,
+                            state[chat_id]['tour_info'][state[chat_id]['tour'] - 1])
 
     state[chat_id]['question'] = q_and_a(state[chat_id]['tournament_id'],
                                          state[chat_id]['tour'],
@@ -229,14 +247,18 @@ def ask(bot, update, **kwargs):
         while state[chat_id]['playing']:
             sleep(0.5)
     state[chat_id]['playing'] = True
-    logger.info('current question: %d % d' % (state[chat_id]['tour'], state[chat_id]['question_number']))
-    bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question_number']))
+    logger.info('current question: %d % d' %
+                (state[chat_id]['tour'], state[chat_id]['question_number']))
+    bot.sendMessage(chat_id, text='Вопрос ' +
+                    str(state[chat_id]['question_number']))
     sleep(1)
     # Если есть картинка, отправим ее
     if 'question_image' in state[chat_id]['question']:
-        bot.sendMessage(chat_id, text=state[chat_id]['question']['question_image'])
+        bot.sendMessage(chat_id,
+                        text=state[chat_id]['question']['question_image'])
     bot.sendMessage(chat_id, text=state[chat_id]['question']['question'])
-    if state[chat_id]['question_number'] < state[chat_id]['n_questions'][state[chat_id]['tour'] - 1]:
+    if state[chat_id]['question_number'] < \
+            state[chat_id]['n_questions'][state[chat_id]['tour'] - 1]:
         state[chat_id]['question_number'] += 1
     elif state[chat_id]['tour'] < state[chat_id]['n_tours']:
         state[chat_id]['tour'] += 1
@@ -244,7 +266,8 @@ def ask(bot, update, **kwargs):
     else:
         state[chat_id]['tour'] = 0
         state[chat_id]['question_number'] = 0
-    logger.info('next question: %d % d' % (state[chat_id]['tour'], state[chat_id]['question_number']))
+    logger.info('next question: %d % d' % (state[chat_id]['tour'],
+                                           state[chat_id]['question_number']))
     wait(chat_id, 10)
     if state[chat_id]['break']:
         state[chat_id]['playing'] = False
@@ -268,18 +291,25 @@ def ask(bot, update, **kwargs):
         state[chat_id]['playing'] = False
         state[chat_id]['break'] = False
         return
-    bot.sendMessage(chat_id, text=u'Ответ: ' + state[chat_id]['question']['answer'])
+    bot.sendMessage(chat_id,
+                    text=u'Ответ: ' + state[chat_id]['question']['answer'])
     sleep(2)
     if 'pass_criteria' in state[chat_id]['question']:
-        bot.sendMessage(chat_id, text=u'Зачет: ' + state[chat_id]['question']['pass_criteria'])
+        bot.sendMessage(chat_id,
+                        u'Зачет: ' +
+                        state[chat_id]['question']['pass_criteria'])
     if 'comments' in state[chat_id]['question']:
-        bot.sendMessage(chat_id, text=u'Комментарий: ' + state[chat_id]['question']['comments'])
+        bot.sendMessage(chat_id, text=u'Комментарий: ' +
+                        state[chat_id]['question']['comments'])
     sleep(2)
-    bot.sendMessage(chat_id, text=u'Источники: ' + state[chat_id]['question']['sources'])
+    bot.sendMessage(chat_id, text=u'Источники: ' +
+                    state[chat_id]['question']['sources'])
     sleep(2)
-    bot.sendMessage(chat_id, text=u'Авторы: ' + state[chat_id]['question']['authors'])
+    bot.sendMessage(chat_id, text=u'Авторы: ' +
+                    state[chat_id]['question']['authors'])
     if state[chat_id]['question_number'] == 1:
-        bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос следующего тура - /ask')
+        bot.sendMessage(chat_id, text=u'Конец тура. '
+                                      u'Первый вопрос следующего тура - /ask')
     elif state[chat_id]['question_number'] == 0:
         bot.sendMessage(chat_id, text=u'Конец турнира.')
     else:
@@ -298,13 +328,19 @@ def answer(bot, update):
         state[chat_id]['break'] = True
         while state[chat_id]['playing']:
             sleep(.5)
-        bot.sendMessage(chat_id, text=u'Ответ: ' + state[chat_id]['question']['answer'])
+        bot.sendMessage(chat_id, text=u'Ответ: ' +
+                        state[chat_id]['question']['answer'])
         if 'comments' in state[chat_id]['question']:
-            bot.sendMessage(chat_id, text=u'Комментарий: ' + state[chat_id]['question']['comments'])
-        bot.sendMessage(chat_id, text=u'Источники: ' + state[chat_id]['question']['sources'])
-        bot.sendMessage(chat_id, text=u'Авторы: ' + state[chat_id]['question']['authors'])
+            bot.sendMessage(chat_id,
+                            text=u'Комментарий: ' +
+                            state[chat_id]['question']['comments'])
+        bot.sendMessage(chat_id, text=u'Источники: ' +
+                        state[chat_id]['question']['sources'])
+        bot.sendMessage(chat_id, text=u'Авторы: ' +
+                        state[chat_id]['question']['authors'])
         if state[chat_id]['question_number'] == 1:
-            bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос следующего тура - /ask')
+            bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос '
+                                          u'следующего тура - /ask')
         elif state[chat_id]['question_number'] == 0:
             bot.sendMessage(chat_id, text=u'Конец турнира.')
         else:
@@ -372,17 +408,7 @@ def main():
     # Start the Bot
     updater.start_polling(poll_interval=0.1, timeout=120)
 
-    # Start CLI-Loop
-    while True:
-        try:
-            text = raw_input()
-        except NameError:
-            text = input()
-
-        # Gracefully stop the event handler
-        if text == 'stop':
-            updater.stop()
-            break
+    updater.idle()
 
 
 if __name__ == '__main__':
