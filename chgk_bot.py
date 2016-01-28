@@ -12,11 +12,10 @@ uses python-telegram-bot library
 /next_tour - skip remaining questions of current tour, ask first question from
 the next.
 """
-
-from telegram import Updater
-from telegram.dispatcher import run_async
 from time import sleep
 import logging
+from telegram import Updater
+from telegram.dispatcher import run_async
 from xml_tools import tournament_info, q_and_a, recent_tournaments
 
 root = logging.getLogger()
@@ -39,38 +38,6 @@ state = dict()
 
 
 # Command Handlers
-def start(bot, update):
-    """ Greetings when start bot """
-    chat_id = update.message.chat_id
-    state[chat_id] = dict()
-    state[chat_id]['break'] = False
-    state[chat_id]['playing'] = False
-    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
-           u"/more - следующие 10 турниров\n" \
-           u"/play [номер пакета] - играть пакет из списка с переданным " \
-           u"номером. Если номер не передан - самый " \
-           u"последний загруженный пакет\n" \
-           u"/ask - задать очередной вопрос\n" \
-           u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
-           u"/next_tour - следующий тур\n" \
-           u"Сыграть последний загруженный турнир, начиная с первого " \
-           u"вопроса - последовательно выполнить " \
-           u"/start, /recent, /play, /ask"
-    bot.sendMessage(update.message.chat_id, text=text)
-
-
-def help(bot, update):
-    """ help command """
-    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
-           u"/more - следующие 10 турниров\n" \
-           u"/play [номер пакета] - играть пакет из списка с переданным " \
-           u"номером. Если номер не передан - самый " \
-           u"последний загруженный пакет\n" \
-           u"/ask - задать очередной вопрос\n" \
-           u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
-           u"/next_tour - следующий тур"
-    bot.sendMessage(update.message.chat_id, text=text)
-
 
 def status(bot, update):
     """
@@ -131,24 +98,6 @@ def more(bot, update):
                 state[chat_id]['tournaments'][i]['title'] + '\n'
     state[chat_id]['last_shown'] = end
     bot.sendMessage(chat_id, text=text)
-
-
-def any_message(bot, update):
-    """ Print to console """
-
-    # Save last chat_id to use in reply handler
-    global last_chat_id
-    last_chat_id = update.message.chat_id
-
-    logger.info("New message\nFrom: %s\nchat_id: %d\nText: %s" %
-                (update.message.from_user,
-                 update.message.chat_id,
-                 update.message.text))
-
-
-def unknown_command(bot, update):
-    """ Answer in Telegram """
-    bot.sendMessage(update.message.chat_id, text='Command not recognized!')
 
 
 def play(bot, update):
@@ -349,34 +298,6 @@ def answer(bot, update):
         bot.sendMessage(chat_id, text=u'Не задан вопрос')
 
 
-def error(bot, update, error):
-    """ Print error to console """
-    logger.warn('Update %s caused error %s' % (update, error))
-
-
-def cli_reply(bot, update, args):
-    """
-    For any update of type telegram.Update or str, you can get the argument
-    list by appending args to the function parameters.
-    Here, we reply to the last active chat with the text after the command.
-    """
-    if last_chat_id is not 0:
-        bot.sendMessage(chat_id=last_chat_id, text=' '.join(args))
-
-
-def cli_noncommand(bot, update, update_queue):
-    """
-    You can also get the update queue as an argument in any handler by
-    appending it to the argument list. Be careful with this though.
-    Here, we put the input string back into the queue, but as a command.
-    """
-    update_queue.put('/%s' % update)
-
-
-def unknown_cli_command(bot, update):
-    logger.warn("Command not found: %s" % update)
-
-
 def main():
     # Create the EventHandler and pass it your bot's token.
     # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
@@ -387,8 +308,6 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    dp.addTelegramCommandHandler("start", start)
-    dp.addTelegramCommandHandler("help", help)
     dp.addTelegramCommandHandler("recent", recent)
     dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
@@ -396,14 +315,6 @@ def main():
     dp.addTelegramCommandHandler("answer", answer)
     dp.addTelegramCommandHandler("next_tour", next_tour)
     dp.addTelegramCommandHandler("status", status)
-    dp.addUnknownTelegramCommandHandler(unknown_command)
-    dp.addTelegramRegexHandler('.*', any_message)
-
-    dp.addStringCommandHandler('reply', cli_reply)
-    dp.addUnknownStringCommandHandler(unknown_cli_command)
-    dp.addStringRegexHandler('[^/].*', cli_noncommand)
-
-    dp.addErrorHandler(error)
 
     # Start the Bot
     updater.start_polling(poll_interval=0.1, timeout=120)

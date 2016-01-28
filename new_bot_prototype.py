@@ -19,7 +19,18 @@ all_games = {}
 def start(bot, update):
     chat_id = update.message.chat_id
     all_games[chat_id] = Game(bot, chat_id)
-    all_games[chat_id].post("Successful init!")
+    text = "/recent - список последних десяти загруженных в базу пакетов\n" \
+           "/more - следующие 10 турниров\n" \
+           "/play [номер пакета] - играть пакет из списка с переданным " \
+           "номером. Если номер не передан - самый последний загруженный " \
+           "пакет\n" \
+           "/ask - задать очередной вопрос\n" \
+           "/answer - увидеть ответ, не дожидаясь конца минуты\n" \
+           "/next_tour - следующий тур\n" \
+           "Сыграть последний загруженный турнир, начиная с первого " \
+           "вопроса - последовательно выполнить " \
+           "/start, /recent, /play, /ask"
+    all_games[chat_id].post(text)
 
 
 def recent(bot, update):
@@ -46,6 +57,9 @@ def play(bot, update, args):
 
 
 def ask(bot, update):
+    """
+    обработка команды /ask - задание очередного вопроса
+    """
     chat_id = update.message.chat_id
     try:
         question = all_games[chat_id].ask()
@@ -83,6 +97,9 @@ def ask(bot, update):
 
 
 def answer(bot, update):
+    """
+    Обработка команды /answer - досрочная печать ответа
+    """
     chat_id = update.message.chat_id
     try:
         all_games[chat_id].post(all_games[chat_id].current_answer)
@@ -94,7 +111,7 @@ def answer(bot, update):
         return
 
 
-def help(bot, update):
+def bot_help(bot, update):
     """ help command """
     text = "/recent - список последних десяти загруженных в базу пакетов\n" \
            "/more - следующие 10 турниров\n" \
@@ -107,12 +124,26 @@ def help(bot, update):
     bot.sendMessage(update.message.chat_id, text=text)
 
 
-# def echo(bot, update):
-#     if update.message.sticker:
-#         bot.sendMessage(update.message.chat_id,
-# text=update.message.sticker.file_id)
-#     bot.sendSticker(update.message.chat_id,
-# sticker='BQADAgADGQADyIsGAAE2WnfSWOhfUgI')
+def any_message(bot, update):
+    """
+    запись всех сообщений во всех чатах в лог
+    """
+    logger.info("New message\nFrom: %s\nchat_id: %d\nText: %s" %
+                (update.message.from_user,
+                 update.message.chat_id,
+                 update.message.text))
+
+
+def unknown_command(bot, update):
+    """
+    обработчик вызова несуществующих команд
+    """
+    bot.sendMessage(update.message.chat_id, text='Несуществующая команда')
+
+
+def bot_error(bot, update, error):
+    """ Print error to console """
+    logger.warning('Update {0} caused error {1}'.format(update, error))
 
 
 def main():
@@ -127,25 +158,21 @@ def main():
     dp = updater.dispatcher
 
     dp.addTelegramCommandHandler("start", start)
-    dp.addTelegramCommandHandler("help", help)
+    dp.addTelegramCommandHandler("help", bot_help)
     dp.addTelegramCommandHandler("recent", recent)
     # dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
-    # dp.addTelegramMessageHandler(echo)
     dp.addTelegramCommandHandler("ask", ask)
     dp.addTelegramCommandHandler("answer", answer)
     # dp.addTelegramCommandHandler("next_tour", next_tour)
     # dp.addTelegramCommandHandler("status", status)
     #
-    # dp.addUnknownTelegramCommandHandler(unknown_command)
-    # dp.addTelegramRegexHandler('.*', any_message)
-    #
-    #
-    # dp.addErrorHandler(error)
+    dp.addUnknownTelegramCommandHandler(unknown_command)
+    dp.addTelegramRegexHandler('.*', any_message)
+    dp.addErrorHandler(bot_error)
 
     # Start the Bot
     updater.start_polling(poll_interval=0.1, timeout=120)
-
     updater.idle()
 
 

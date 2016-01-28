@@ -118,7 +118,7 @@ def q_and_a(tournament_url, tour, question):
     :return: dict with info about the question
     """
     url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(
-            tournament_url.split('/')[-1], tour, question)
+        tournament_url.split('/')[-1], tour, question)
     question_url = urlopen(url)
     quest = etree.fromstring(question_url.read())
     question_url.close()
