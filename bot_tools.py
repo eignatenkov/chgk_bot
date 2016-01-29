@@ -69,6 +69,13 @@ class Question(object):
                                          self.authors)
 
 
+class TournamentError(Exception):
+    """
+    ошибка загрузки турнира
+    """
+    pass
+
+
 class Tournament(object):
     """
     class for tournament
@@ -81,6 +88,8 @@ class Tournament(object):
     def __init__(self, url):
         self.url = url
         data = tournament_info(url)
+        if not data:
+            raise TournamentError
         self.title = data.get('title', '')
         self.description = data.get('description', '')
         self.number_of_tours = data.get('n_tours', '')
@@ -152,6 +161,26 @@ class Game(object):
         self.last_shown_tournament = 10
         self.post(text)
 
+    def more(self):
+        """
+        show ten more tournaments from the list of loaded tournaments
+        :return:
+        """
+        if self.last_shown_tournament == len(self.tournaments_list):
+            self.post("Больше нет")
+            return
+        else:
+            text = ''
+            max_border = min(self.last_shown_tournament + 10,
+                             len(self.tournaments_list))
+            more_tournaments = self.tournaments_list[
+                self.last_shown_tournament:max_border]
+            for index, tournament in enumerate(more_tournaments):
+                text += str(index + self.last_shown_tournament + 1) +\
+                        '. ' + tournament['title'] + '\n'
+            self.last_shown_tournament = max_border
+            self.post(text)
+
     def play(self, tournament_id):
         """
         :param tournament_id: id of a tournament from self.tournaments_list
@@ -163,7 +192,11 @@ class Game(object):
         except TypeError:
             self.post("Загрузите список турниров с помощью /recent")
             return
-        self.current_tournament = Tournament(tournament_url)
+        try:
+            self.current_tournament = Tournament(tournament_url)
+        except TournamentError:
+            self.post('Ошибка при загрузке турнира. Выберите другой турнир')
+            return
         self.post(self.current_tournament.full_description)
         self.post("/ask - задать первый вопрос")
 

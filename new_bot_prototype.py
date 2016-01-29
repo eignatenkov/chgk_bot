@@ -12,11 +12,17 @@ logging.basicConfig(
     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-
+job_queue = None
 all_games = {}
 
 
 def start(bot, update):
+    """
+    Запуск бота в чате
+    :param bot:
+    :param update:
+    :return:
+    """
     chat_id = update.message.chat_id
     all_games[chat_id] = Game(bot, chat_id)
     text = "/recent - список последних десяти загруженных в базу пакетов\n" \
@@ -34,14 +40,42 @@ def start(bot, update):
 
 
 def recent(bot, update):
+    """
+    Получить список последних загруженных турниров
+    :param bot:
+    :param update:
+    :return:
+    """
     chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id)
+    all_games[chat_id].get_recent()
+
+
+def more(bot, update):
+    """
+    Показать еще десять загруженных турниров
+    :param bot:
+    :param update:
+    :return:
+    """
+    chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id)
     try:
-        all_games[chat_id].get_recent()
-    except KeyError:
-        bot.sendMessage(chat_id, "/start the bot")
+        all_games[chat_id].more()
+    except TypeError:
+        bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
 
 
 def play(bot, update, args):
+    """
+    Играть турнир с заданным номером
+    :param bot:
+    :param update:
+    :param args:
+    :return:
+    """
     chat_id = update.message.chat_id
     try:
         tournament_id = int(args[0])
@@ -50,10 +84,9 @@ def play(bot, update, args):
     except ValueError:
         bot.sendMessage(chat_id, "Некорректный параметр для /play")
         return
-    try:
-        all_games[chat_id].play(tournament_id)
-    except KeyError:
-        bot.sendMessage(chat_id, "/start the bot")
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id)
+    all_games[chat_id].play(tournament_id)
 
 
 def ask(bot, update):
@@ -61,6 +94,8 @@ def ask(bot, update):
     обработка команды /ask - задание очередного вопроса
     """
     chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id)
     try:
         question = all_games[chat_id].ask()
         current_state = all_games[chat_id].state
@@ -90,8 +125,6 @@ def ask(bot, update):
         job_queue.put(ten_seconds, 50, repeat=False)
         job_queue.put(time_is_up, 60, repeat=False)
         job_queue.put(post_answer, 70, repeat=False)
-    except KeyError:
-        bot.sendMessage(chat_id, "/start the bot")
     except AttributeError:
         return
 
@@ -101,13 +134,14 @@ def answer(bot, update):
     Обработка команды /answer - досрочная печать ответа
     """
     chat_id = update.message.chat_id
-    try:
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id)
+    if all_games[chat_id].current_answer:
         all_games[chat_id].post(all_games[chat_id].current_answer)
         all_games[chat_id].post('Следующий вопрос: /ask')
         all_games[chat_id].state = None
-    except KeyError:
-        bot.sendMessage(chat_id, "/start the bot")
-    except AttributeError:
+    else:
+        bot.sendMessage(chat_id, "Не был задан вопрос")
         return
 
 
@@ -160,7 +194,7 @@ def main():
     dp.addTelegramCommandHandler("start", start)
     dp.addTelegramCommandHandler("help", bot_help)
     dp.addTelegramCommandHandler("recent", recent)
-    # dp.addTelegramCommandHandler("more", more)
+    dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
     dp.addTelegramCommandHandler("ask", ask)
     dp.addTelegramCommandHandler("answer", answer)

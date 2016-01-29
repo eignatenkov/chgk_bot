@@ -308,9 +308,6 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    dp.addTelegramCommandHandler("recent", recent)
-    dp.addTelegramCommandHandler("more", more)
-    dp.addTelegramCommandHandler("play", play)
     dp.addTelegramCommandHandler("ask", ask)
     dp.addTelegramCommandHandler("answer", answer)
     dp.addTelegramCommandHandler("next_tour", next_tour)
