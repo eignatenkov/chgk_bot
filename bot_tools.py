@@ -76,15 +76,17 @@ class TournamentError(Exception):
     pass
 
 
+class NextTourError(Exception):
+    """
+    ошибка перехода к следующему туру
+    """
+    pass
+
+
 class Tournament(object):
     """
     class for tournament
     """
-    # title = XMLField('title')
-    # description = XMLField('description')
-    # number_of_tours = XMLField('n_tours')
-    # number_of_questions = XMLField('n_questions')
-
     def __init__(self, url):
         self.url = url
         data = tournament_info(url)
@@ -95,10 +97,10 @@ class Tournament(object):
         self.number_of_tours = data.get('n_tours', '')
         self.number_of_questions = data.get('n_questions', [])
         self.tour_titles = data.get('tour_titles', [])
-        self.tour_info = data.get('tour_info', '')
-        self.tour_editors = data.get('tour_editors')
+        self.tour_info = data.get('tour_info', [])
+        self.tour_editors = data.get('tour_editors', [])
         self.current_tour = 1
-        self.current_question = 1
+        self.current_question = 0
 
     @property
     def full_description(self):
@@ -111,18 +113,32 @@ class Tournament(object):
         return self
 
     def __next__(self):
-        if self.current_tour <= self.number_of_tours:
-            question = Question(self.url,
-                                self.current_tour,
-                                self.current_question)
+        if self.current_tour == self.number_of_tours and \
+                self.current_question == self.number_of_questions[-1] or \
+                self.current_tour > self.number_of_tours:
+            raise StopIteration
+        else:
             self.current_question += 1
             if self.current_question > \
                     self.number_of_questions[self.current_tour - 1]:
                 self.current_question = 1
                 self.current_tour += 1
+            question = Question(self.url,
+                                self.current_tour,
+                                self.current_question)
             return question
+
+    def next_tour(self):
+        """
+        переместить указатель текущего вопроса и тура на первый вопрос
+        следующего тура
+        :return:
+        """
+        if self.current_tour < self.number_of_tours:
+            self.current_tour += 1
+            self.current_question = 0
         else:
-            raise StopIteration
+            raise NextTourError
 
 
 class Game(object):
@@ -137,6 +153,7 @@ class Game(object):
         self.last_shown_tournament = 0
         self.state = None
         self.current_answer = None
+        self.hint = ''
 
     def post(self, message):
         """
@@ -187,6 +204,7 @@ class Game(object):
         :return: loads tournament into self.current_tournaments; posts
         description of a tournament
         """
+        self.state = None
         try:
             tournament_url = self.tournaments_list[tournament_id-1]['link']
         except TypeError:
@@ -201,10 +219,29 @@ class Game(object):
         self.post("/ask - задать первый вопрос")
 
     def ask(self):
+        """
+        возвращает очередной вопрос текущего турнира, если он есть; заполняет
+        self.hint - подсказку, выдаваемую после публикации ответа
+        :return: объект Question
+        """
         try:
             question = next(self.current_tournament)
             self.state = question.id
             self.current_answer = question.full_answer
+            self.hint = 'Следующий вопрос - /ask'
+            if self.state[2] == self.current_tournament.number_of_questions[
+                    self.state[1]-1]:
+                if self.state[1] == self.current_tournament.number_of_tours:
+                    self.hint = 'Конец турнира'
+                else:
+                    self.hint = 'Конец тура. ' + self.hint
+            if self.state[2] == 1:
+                tour_number = self.state[1]-1
+                text = self.current_tournament.tour_titles[tour_number] + \
+                    '\nРедакторы: ' + \
+                    self.current_tournament.tour_editors[tour_number] + \
+                    '\n' + self.current_tournament.tour_info[tour_number]
+                self.post(text)
             return question
         except TypeError:
             self.post("Выберите турнир - /play [номер турнира]")
@@ -214,6 +251,20 @@ class Game(object):
                       "Выберите турнир - /play [номер турнира]")
             return
 
+    def next_tour(self):
+        """
+        переход к следующему туру
+        :return:
+        """
+        try:
+            self.state = None
+            self.current_tournament.next_tour()
+        except AttributeError:
+            # self.post("Выберите турнир - /play [номер турнира]")
+            pass
+        except NextTourError:
+            self.post("Это последний тур")
+            raise
 
 if __name__ == "__main__":
     test_tournament = Tournament('http://db.chgk.info/tour/vdi15-03')
