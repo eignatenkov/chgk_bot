@@ -3,9 +3,9 @@
 """ tools for getting questions and tournaments from db.chgk.info
 """
 
-import urllib2
-from lxml import etree, html
+from urllib.request import urlopen, HTTPError
 from html.parser import HTMLParser
+from lxml import etree, html
 
 
 def neat(text):
@@ -27,6 +27,7 @@ class MLStripper(HTMLParser):
     of the question
     """
     def __init__(self):
+        super().__init__()
         self.reset()
         self.strict = False
         self.convert_charrefs = True
@@ -57,7 +58,7 @@ def recent_tournaments():
     list of recent tournaments
     :return: list of recent tournaments
     """
-    recent_url = urllib2.urlopen("http://db.chgk.info/last/feed")
+    recent_url = urlopen("http://db.chgk.info/last/feed")
     recent_data = recent_url.read()
     recent_url.close()
     recent_xml = etree.fromstring(recent_data)
@@ -80,8 +81,8 @@ def tournament_info(url):
     """
     url += '/xml'
     try:
-        tournament_url = urllib2.urlopen(url)
-    except urllib2.HTTPError:
+        tournament_url = urlopen(url)
+    except HTTPError:
         return ''
     tournament = etree.fromstring(tournament_url.read())
     tournament_url.close()
@@ -107,17 +108,18 @@ def tournament_info(url):
     return result
 
 
-def q_and_a(tournament, tour, question):
+def q_and_a(tournament_url, tour, question):
     """
     get all necessary info about the question: text, handouts (if present),
     answer, comments, author, sources.
-    :param tournament: tournament id
+    :param tournament_url: tournament url
     :param tour: tour number
     :param question: question number
     :return: dict with info about the question
     """
-    url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(tournament.split('/')[-1], tour, question)
-    question_url = urllib2.urlopen(url)
+    url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(
+        tournament_url.split('/')[-1], tour, question)
+    question_url = urlopen(url)
     quest = etree.fromstring(question_url.read())
     question_url.close()
     result = dict()
@@ -136,6 +138,6 @@ def q_and_a(tournament, tour, question):
     return result
 
 if __name__ == "__main__":
-    print tournament_info("http://db.chgk.info/tour/balt16-2")['description']
+    print(tournament_info("http://db.chgk.info/tour/balt16-2")['description'])
     for item in q_and_a("http://db.chgk.info/tour/balt16-2", 1, 1).values():
-        print item
+        print(item)

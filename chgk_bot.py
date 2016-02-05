@@ -1,388 +1,256 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
-chgk_bot for telegram
-
-uses python-telegram-bot library
-
-/recent - list of 10 most recently uploaded to db.chgk.info tournaments
-/play [number] - play one of the tournaments. By default - most recent.
-/ask - ask next question
-/next_tour - skip remaining questions of current tour, ask first question from
-the next.
+Bot you can play with
 """
-
-from telegram import Updater
-from telegram.dispatcher import run_async
-from time import sleep
 import logging
-from xml_tools import tournament_info, q_and_a, recent_tournaments
+from time import sleep
+import json
+from telegram import Updater
+from bot_tools import Game, NextTourError
 
-root = logging.getLogger()
-root.setLevel(logging.INFO)
-
-
-ch = logging.FileHandler("chgk_bot.log")
-ch.setLevel(logging.INFO)
-formatter = \
-    logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-root.addHandler(ch)
-
-last_chat_id = 0
+# Enable logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+job_queue = None
+updater_bot = None
+all_games = {}
 
-# dict of dicts with information for every chatting user
-state = dict()
+
+def update_state(func):
+    def wrapper(*pargs, **kwargs):
+        retval = func(*pargs, **kwargs)
+        state = {}
+        for key, value in all_games.items():
+            state[key] = value.export()
+        with open('chgk_db.json', 'w') as chgk_db:
+            json.dump(state, chgk_db)
+        return retval
+    return wrapper
 
 
-# Command Handlers
-def start(bot, update):
-    """ Greetings when start bot """
+@update_state
+def start(bot, update, **kwargs):
+    """
+    Запуск бота в чате
+    :param bot:
+    :param update:
+    :return:
+    """
     chat_id = update.message.chat_id
-    state[chat_id] = dict()
-    state[chat_id]['break'] = False
-    state[chat_id]['playing'] = False
-    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
-           u"/more - следующие 10 турниров\n" \
-           u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
-           u"последний загруженный пакет\n" \
-           u"/ask - задать очередной вопрос\n" \
-           u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
-           u"/next_tour - следующий тур\n" \
-           u"Сыграть последний загруженный турнир, начиная с первого вопроса - последовательно выполнить " \
-           u"/start, /recent, /play, /ask"
-    bot.sendMessage(update.message.chat_id, text=text)
+    all_games[chat_id] = Game(bot, chat_id, {})
+    text = "/recent - список последних десяти загруженных в базу пакетов\n" \
+           "/more - следующие 10 турниров\n" \
+           "/play [номер пакета] - играть пакет из списка с переданным " \
+           "номером. Если номер не передан - самый последний загруженный " \
+           "пакет\n" \
+           "/ask - задать очередной вопрос\n" \
+           "/answer - увидеть ответ, не дожидаясь конца минуты\n" \
+           "/next_tour - следующий тур\n" \
+           "Сыграть последний загруженный турнир, начиная с первого " \
+           "вопроса - последовательно выполнить " \
+           "/recent, /play, /ask"
+    all_games[chat_id].post(text)
 
 
-def help(bot, update):
+@update_state
+def recent(bot, update, **kwargs):
+    """
+    Получить список последних загруженных турниров
+    :param bot:
+    :param update:
+    :return:
+    """
+    chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id, {})
+    all_games[chat_id].get_recent()
+
+
+@update_state
+def more(bot, update, **kwargs):
+    """
+    Показать еще десять загруженных турниров
+    :param bot:
+    :param update:
+    :return:
+    """
+    chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id, {})
+    try:
+        all_games[chat_id].more()
+    except TypeError:
+        bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
+
+
+@update_state
+def play(bot, update, args, **kwargs):
+    """
+    Играть турнир с заданным номером
+    :param bot:
+    :param update:
+    :param args:
+    :return:
+    """
+    chat_id = update.message.chat_id
+    try:
+        tournament_id = int(args[0])
+    except IndexError:
+        tournament_id = 1
+    except ValueError:
+        bot.sendMessage(chat_id, "Некорректный параметр для /play")
+        return
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id, {})
+    all_games[chat_id].play(tournament_id)
+
+
+@update_state
+def ask(bot, update, **kwargs):
+    """
+    обработка команды /ask - задание очередного вопроса
+    """
+    chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        print(chat_id)
+        all_games[chat_id] = Game(bot, chat_id, {})
+    try:
+        question = all_games[chat_id].ask()
+        current_state = all_games[chat_id].state
+        all_games[chat_id].post('Вопрос {}'.format(question.question_number))
+        sleep(1)
+        if question.question_image:
+            all_games[chat_id].post(question.question_image)
+        all_games[chat_id].post(question.question)
+
+        def read_question(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post('Время пошло!')
+
+        def ten_seconds(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post('10 секунд')
+
+        def time_is_up(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post('Время!')
+
+        def post_answer(bot):
+            if current_state == all_games[chat_id].state:
+                all_games[chat_id].post(question.full_answer)
+                all_games[chat_id].post(all_games[chat_id].hint)
+        job_queue.put(read_question, 10, repeat=False)
+        job_queue.put(ten_seconds, 50, repeat=False)
+        job_queue.put(time_is_up, 60, repeat=False)
+        job_queue.put(post_answer, 70, repeat=False)
+    except AttributeError:
+        return
+
+
+@update_state
+def answer(bot, update, **kwargs):
+    """
+    Обработка команды /answer - досрочная печать ответа
+    """
+    chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id, {})
+    if all_games[chat_id].current_answer:
+        all_games[chat_id].post(all_games[chat_id].current_answer)
+        all_games[chat_id].post(all_games[chat_id].hint)
+        all_games[chat_id].state = None
+    else:
+        bot.sendMessage(chat_id, "Не был задан вопрос")
+        return
+
+
+@update_state
+def next_tour(bot, update, **kwargs):
+    """
+    Обработка команды /next_tour - переход к следующему туру
+    """
+    chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        all_games[chat_id] = Game(bot, chat_id, {})
+    try:
+        all_games[chat_id].next_tour()
+        ask(bot, update)
+    except NextTourError:
+        pass
+
+
+def bot_help(bot, update):
     """ help command """
-    text = u"/recent - список последних десяти загруженных в базу пакетов\n" \
-           u"/more - следующие 10 турниров\n" \
-           u"/play [номер пакета] - играть пакет из списка с переданным номером. Если номер не передан - самый " \
-           u"последний загруженный пакет\n" \
-           u"/ask - задать очередной вопрос\n" \
-           u"/answer - увидеть ответ, не дожидаясь конца минуты\n" \
-           u"/next_tour - следующий тур"
+    text = "/recent - список последних десяти загруженных в базу пакетов\n" \
+           "/more - следующие 10 турниров\n" \
+           "/play [номер пакета] - играть пакет из списка с переданным " \
+           "номером. Если номер не передан - самый последний загруженный " \
+           "пакет\n" \
+           "/ask - задать очередной вопрос\n" \
+           "/answer - увидеть ответ, не дожидаясь конца минуты\n" \
+           "/next_tour - следующий тур"
     bot.sendMessage(update.message.chat_id, text=text)
-
-
-def status(bot, update):
-    """
-    writes to terminal full 'state' information for given chat
-    """
-    for key, value in state[update.message.chat_id].items():
-        if key != 'tournaments':
-            print key, ': ',
-            try:
-                value.encode('utf-8')
-            except:
-                print str(value)
-
-
-def recent(bot, update):
-    """
-    /recent - print out list of ten most recently added tournaments
-    """
-    chat_id = update.message.chat_id
-    if chat_id not in state.keys():
-        bot.sendMessage(chat_id, text='/start the bot')
-        return
-    state[chat_id]['tournaments'] = recent_tournaments()
-    if len(state[chat_id]['tournaments']) == 0:
-        bot.sendMessage(chat_id, text='сайт db.chgk.info не возвращает список '
-                                      'турниров. Попробуйте позже')
-        state[chat_id].pop('tournaments')
-        return
-    # default tournament is the most recently added tournament
-    if 'tournament_id' not in state[chat_id] or state[chat_id].get('question_number', 0) == 0:
-        state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
-
-    text = ''
-    for index, tournament in enumerate(state[chat_id]['tournaments'][:10]):
-        text += str(index+1) + '. ' + tournament['title'] + '\n'
-    state[chat_id]['last_shown'] = 10
-    bot.sendMessage(chat_id, text=text)
-
-
-def more(bot, update):
-    """
-    show more tournaments from loaded
-    """
-    chat_id = update.message.chat_id
-    if 'tournaments' not in state[chat_id] or 'last_shown' not in state[chat_id]:
-        bot.sendMessage(chat_id, text='Нет скачанных турниров')
-        return 0
-    last = state[chat_id]['last_shown']
-    end = min(last+10, len(state[chat_id]['tournaments']))
-    if last == end:
-        bot.sendMessage(chat_id, text='Больше нет')
-    text = ''
-    for i in range(last, end):
-        text += str(i+1) + '. ' + state[chat_id]['tournaments'][i]['title'] + '\n'
-    state[chat_id]['last_shown'] = end
-    bot.sendMessage(chat_id, text=text)
 
 
 def any_message(bot, update):
-    """ Print to console """
-
-    # Save last chat_id to use in reply handler
-    global last_chat_id
-    last_chat_id = update.message.chat_id
-
-    logger.info("New message\nFrom: %s\nchat_id: %d\nText: %s" %
-                (update.message.from_user,
-                 update.message.chat_id,
-                 update.message.text))
+    """
+    запись всех сообщений во всех чатах в лог
+    """
+    logger.info("New message\nFrom: %s\nchat_id: %d\nText: %s",
+                update.message.from_user,
+                update.message.chat_id,
+                update.message.text)
 
 
 def unknown_command(bot, update):
-    """ Answer in Telegram """
-    bot.sendMessage(update.message.chat_id, text='Command not recognized!')
-
-
-def play(bot, update):
-    """ /play tournament """
-    chat_id = update.message.chat_id
-    if chat_id not in state or 'tournaments' not in state[chat_id]:
-        bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent')
-        return
-    parameter = update.message.text.strip(' /play')
-    if parameter != '':
-        try:
-            if 0 < int(parameter) < len(state[chat_id]['tournaments']) + 1:
-                state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][int(parameter) - 1]['link']
-            else:
-                bot.sendMessage(chat_id, text='Турнира с таким номером нет среди загруженных. Играем первый турнир')
-                state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
-        except:
-            bot.sendMessage(chat_id, text='Параметр не распознан, играем первый турнир')
-            state[chat_id]['tournament_id'] = state[chat_id]['tournaments'][0]['link']
-    current = tournament_info(state[chat_id]['tournament_id'])
-    if current == '':
-        bot.sendMessage(chat_id, text='Ошибка при загрузке турнира. Выберите другой турнир')
-        return
-    state[chat_id]['tour'] = 1
-    state[chat_id]['question_number'] = 1
-    state[chat_id].update(current)
-    bot.sendMessage(chat_id, text=state[chat_id]['description'])
-    bot.sendMessage(chat_id, text='/ask - задать первый вопрос')
-
-
-def next_tour(bot, update):
     """
-    /next_tour - play next tour
+    обработчик вызова несуществующих команд
     """
-    chat_id = update.message.chat_id
-    if state[chat_id]['tour'] == state[chat_id]['n_tours']:
-        bot.sendMessage(chat_id, text='Это последний тур турнира')
-        return
-    if state[chat_id]['playing']:
-        state[chat_id]['break'] = True
-        while state[chat_id]['playing']:
-            sleep(.5)
-    state[chat_id]['tour'] += 1
-    state[chat_id]['question_number'] = 1
-    ask(bot, update)
+    bot.sendMessage(update.message.chat_id, text='Несуществующая команда')
 
 
-def wait(chat_id, time):
-    while not state[chat_id]['break'] and time >= 0:
-        sleep(1)
-        time -= 1
-
-
-@run_async
-def ask(bot, update, **kwargs):
-    """ /ask current question, wait 50 secs, warn that 10 secs are left,
-    wait 10 secs, tell that time is up, wait 10 secs, print answer and
-    additional info, get ready to ask next question.
-    """
-    chat_id = update.message.chat_id
-    if chat_id not in state or 'tournaments' not in state[chat_id]:
-        bot.sendMessage(chat_id, text='Нет списка турниров. Сделайте /recent и /play')
-        return 0
-
-    if 'tour' not in state[chat_id]:
-        bot.sendMessage(chat_id, text='Не выбран турнир. Сделайте /play')
-        return 0
-
-    if state[chat_id]['question_number'] == 0:
-        bot.sendMessage(chat_id, text='Турнир закончен. Выберите новый турнир')
-        return 0
-
-    if state[chat_id]['question_number'] == 1:
-        bot.sendMessage(chat_id, text=state[chat_id]['tour_titles'][state[chat_id]['tour'] - 1])
-        if state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1]:
-            bot.sendMessage(chat_id, text=state[chat_id]['tour_editors'][state[chat_id]['tour'] - 1])
-        if state[chat_id]['tour_info'][state[chat_id]['tour'] - 1]:
-            bot.sendMessage(chat_id, text=state[chat_id]['tour_info'][state[chat_id]['tour'] - 1])
-
-    state[chat_id]['question'] = q_and_a(state[chat_id]['tournament_id'],
-                                         state[chat_id]['tour'],
-                                         state[chat_id]['question_number'])
-    if state[chat_id]['playing']:
-        state[chat_id]['break'] = True
-        while state[chat_id]['playing']:
-            sleep(0.5)
-    state[chat_id]['playing'] = True
-    logger.info('current question: %d % d' % (state[chat_id]['tour'], state[chat_id]['question_number']))
-    bot.sendMessage(chat_id, text='Вопрос ' + str(state[chat_id]['question_number']))
-    sleep(1)
-    # Если есть картинка, отправим ее
-    if 'question_image' in state[chat_id]['question']:
-        bot.sendMessage(chat_id, text=state[chat_id]['question']['question_image'])
-    bot.sendMessage(chat_id, text=state[chat_id]['question']['question'])
-    if state[chat_id]['question_number'] < state[chat_id]['n_questions'][state[chat_id]['tour'] - 1]:
-        state[chat_id]['question_number'] += 1
-    elif state[chat_id]['tour'] < state[chat_id]['n_tours']:
-        state[chat_id]['tour'] += 1
-        state[chat_id]['question_number'] = 1
-    else:
-        state[chat_id]['tour'] = 0
-        state[chat_id]['question_number'] = 0
-    logger.info('next question: %d % d' % (state[chat_id]['tour'], state[chat_id]['question_number']))
-    wait(chat_id, 10)
-    if state[chat_id]['break']:
-        state[chat_id]['playing'] = False
-        state[chat_id]['break'] = False
-        return
-    bot.sendMessage(chat_id, text='Время пошло!')
-    wait(chat_id, 50)
-    if state[chat_id]['break']:
-        state[chat_id]['playing'] = False
-        state[chat_id]['break'] = False
-        return
-    bot.sendMessage(chat_id, text='10 секунд')
-    wait(chat_id, 10)
-    if state[chat_id]['break']:
-        state[chat_id]['playing'] = False
-        state[chat_id]['break'] = False
-        return
-    bot.sendMessage(chat_id, text='Время!')
-    wait(chat_id, 10)
-    if state[chat_id]['break']:
-        state[chat_id]['playing'] = False
-        state[chat_id]['break'] = False
-        return
-    bot.sendMessage(chat_id, text=u'Ответ: ' + state[chat_id]['question']['answer'])
-    sleep(2)
-    if 'pass_criteria' in state[chat_id]['question']:
-        bot.sendMessage(chat_id, text=u'Зачет: ' + state[chat_id]['question']['pass_criteria'])
-    if 'comments' in state[chat_id]['question']:
-        bot.sendMessage(chat_id, text=u'Комментарий: ' + state[chat_id]['question']['comments'])
-    sleep(2)
-    bot.sendMessage(chat_id, text=u'Источники: ' + state[chat_id]['question']['sources'])
-    sleep(2)
-    bot.sendMessage(chat_id, text=u'Авторы: ' + state[chat_id]['question']['authors'])
-    if state[chat_id]['question_number'] == 1:
-        bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос следующего тура - /ask')
-    elif state[chat_id]['question_number'] == 0:
-        bot.sendMessage(chat_id, text=u'Конец турнира.')
-    else:
-        bot.sendMessage(chat_id, text=u'Следующий вопрос - /ask')
-
-    state[chat_id]['playing'] = False
-
-
-def answer(bot, update):
-    """
-    Досрочный ответ
-    :return: постит ответ не дожидаясь конца отсчета времени
-    """
-    chat_id = update.message.chat_id
-    if state[chat_id]['playing']:
-        state[chat_id]['break'] = True
-        while state[chat_id]['playing']:
-            sleep(.5)
-        bot.sendMessage(chat_id, text=u'Ответ: ' + state[chat_id]['question']['answer'])
-        if 'comments' in state[chat_id]['question']:
-            bot.sendMessage(chat_id, text=u'Комментарий: ' + state[chat_id]['question']['comments'])
-        bot.sendMessage(chat_id, text=u'Источники: ' + state[chat_id]['question']['sources'])
-        bot.sendMessage(chat_id, text=u'Авторы: ' + state[chat_id]['question']['authors'])
-        if state[chat_id]['question_number'] == 1:
-            bot.sendMessage(chat_id, text=u'Конец тура. Первый вопрос следующего тура - /ask')
-        elif state[chat_id]['question_number'] == 0:
-            bot.sendMessage(chat_id, text=u'Конец турнира.')
-        else:
-            bot.sendMessage(chat_id, text=u'Следующий вопрос - /ask')
-    else:
-        bot.sendMessage(chat_id, text=u'Не задан вопрос')
-
-
-def error(bot, update, error):
+def bot_error(bot, update, error):
     """ Print error to console """
-    logger.warn('Update %s caused error %s' % (update, error))
-
-
-def cli_reply(bot, update, args):
-    """
-    For any update of type telegram.Update or str, you can get the argument
-    list by appending args to the function parameters.
-    Here, we reply to the last active chat with the text after the command.
-    """
-    if last_chat_id is not 0:
-        bot.sendMessage(chat_id=last_chat_id, text=' '.join(args))
-
-
-def cli_noncommand(bot, update, update_queue):
-    """
-    You can also get the update queue as an argument in any handler by
-    appending it to the argument list. Be careful with this though.
-    Here, we put the input string back into the queue, but as a command.
-    """
-    update_queue.put('/%s' % update)
-
-
-def unknown_cli_command(bot, update):
-    logger.warn("Command not found: %s" % update)
+    logger.warning('Update %s caused error %s', update, error)
 
 
 def main():
-    # Create the EventHandler and pass it your bot's token.
+    global job_queue, updater_bot
     # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
     token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
+    job_queue = updater.job_queue
+
+    try:
+        with open('chgk_db.json') as f:
+            state = json.load(f)
+            for chat_id, game in state.items():
+                all_games[int(chat_id)] = Game(updater.bot, int(chat_id), game)
+    except FileNotFoundError:
+        pass
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
     dp.addTelegramCommandHandler("start", start)
-    dp.addTelegramCommandHandler("help", help)
+    dp.addTelegramCommandHandler("help", bot_help)
     dp.addTelegramCommandHandler("recent", recent)
     dp.addTelegramCommandHandler("more", more)
     dp.addTelegramCommandHandler("play", play)
     dp.addTelegramCommandHandler("ask", ask)
     dp.addTelegramCommandHandler("answer", answer)
     dp.addTelegramCommandHandler("next_tour", next_tour)
-    dp.addTelegramCommandHandler("status", status)
+
     dp.addUnknownTelegramCommandHandler(unknown_command)
     dp.addTelegramRegexHandler('.*', any_message)
-
-    dp.addStringCommandHandler('reply', cli_reply)
-    dp.addUnknownStringCommandHandler(unknown_cli_command)
-    dp.addStringRegexHandler('[^/].*', cli_noncommand)
-
-    dp.addErrorHandler(error)
+    dp.addErrorHandler(bot_error)
 
     # Start the Bot
     updater.start_polling(poll_interval=0.1, timeout=120)
-
-    # Start CLI-Loop
-    while True:
-        try:
-            text = raw_input()
-        except NameError:
-            text = input()
-
-        # Gracefully stop the event handler
-        if text == 'stop':
-            updater.stop()
-            break
+    updater.idle()
 
 
 if __name__ == '__main__':
