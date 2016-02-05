@@ -87,7 +87,7 @@ class Tournament(object):
     """
     class for tournament
     """
-    def __init__(self, url):
+    def __init__(self, url, current_tour=1, current_question=0):
         self.url = url
         data = tournament_info(url)
         if not data:
@@ -99,8 +99,8 @@ class Tournament(object):
         self.tour_titles = data.get('tour_titles', [])
         self.tour_info = data.get('tour_info', [])
         self.tour_editors = data.get('tour_editors', [])
-        self.current_tour = 1
-        self.current_question = 0
+        self.current_tour = current_tour
+        self.current_question = current_question
 
     @property
     def full_description(self):
@@ -145,10 +145,10 @@ class Game(object):
     """
     implements game process for the bot
     """
-    def __init__(self, bot, chat_id):
+    def __init__(self, bot, chat_id, current_tournament=None):
         self.bot = bot
         self.chat_id = chat_id
-        self.current_tournament = None
+        self.current_tournament = current_tournament
         self.tournaments_list = None
         self.last_shown_tournament = 0
         self.state = None
@@ -265,6 +265,15 @@ class Game(object):
         except NextTourError:
             self.post("Это последний тур")
             raise
+
+    def export(self):
+        """
+        выгрузка информации об игре в словарь
+        :return: словарь, позволяющий восстановить игру
+        """
+        return {
+            'current_tournament': getattr(self.current_tournament, 'url', None)
+        }
 
 if __name__ == "__main__":
     test_tournament = Tournament('http://db.chgk.info/tour/vdi15-03')

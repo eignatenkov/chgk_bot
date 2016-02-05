@@ -3,6 +3,7 @@ Bot you can play with
 """
 import logging
 from time import sleep
+import json
 from telegram import Updater
 from bot_tools import Game, NextTourError
 
@@ -16,7 +17,20 @@ job_queue = None
 all_games = {}
 
 
-def start(bot, update):
+def update_state(func):
+    def wrapper(*pargs, **kwargs):
+        retval = func(*pargs, **kwargs)
+        state = {}
+        for key, value in all_games.items():
+            state[key] = value.export()
+        with open('chgk_db.json', 'w') as chgk_db:
+            json.dump(state, chgk_db)
+        return retval
+    return wrapper
+
+
+@update_state
+def start(bot, update, **kwargs):
     """
     Запуск бота в чате
     :param bot:
@@ -68,7 +82,8 @@ def more(bot, update):
         bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
 
 
-def play(bot, update, args):
+@update_state
+def play(bot, update, args, **kwargs):
     """
     Играть турнир с заданным номером
     :param bot:
