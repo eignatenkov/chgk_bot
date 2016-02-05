@@ -87,8 +87,11 @@ class Tournament(object):
     """
     class for tournament
     """
-    def __init__(self, url, current_tour=1, current_question=0):
-        self.url = url
+    def __init__(self, url):
+        if url:
+            self.url = url
+        else:
+            return
         data = tournament_info(url)
         if not data:
             raise TournamentError
@@ -99,8 +102,8 @@ class Tournament(object):
         self.tour_titles = data.get('tour_titles', [])
         self.tour_info = data.get('tour_info', [])
         self.tour_editors = data.get('tour_editors', [])
-        self.current_tour = current_tour
-        self.current_question = current_question
+        self.current_tour = 1
+        self.current_question = 0
 
     @property
     def full_description(self):
@@ -145,15 +148,21 @@ class Game(object):
     """
     implements game process for the bot
     """
-    def __init__(self, bot, chat_id, current_tournament=None):
+    def __init__(self, bot, chat_id, game_dict):
         self.bot = bot
         self.chat_id = chat_id
-        self.current_tournament = current_tournament
-        self.tournaments_list = None
-        self.last_shown_tournament = 0
+        self.tournaments_list = game_dict.get('tournaments_list')
+        self.last_shown_tournament = game_dict.get('last_shown_tournament', 0)
         self.state = None
-        self.current_answer = None
-        self.hint = ''
+        self.current_answer = game_dict.get('current_answer')
+        self.hint = game_dict.get('hint', '')
+        self.current_tournament = \
+            Tournament(game_dict.get('current_tournament'))
+        if self.current_tournament:
+            self.current_tournament.current_tour = \
+                game_dict.get('current_tour', 1)
+            self.current_tournament.current_question = \
+                game_dict.get('current_question', 0)
 
     def post(self, message):
         """
@@ -212,6 +221,7 @@ class Game(object):
             return
         try:
             self.current_tournament = Tournament(tournament_url)
+            self.state = (tournament_url, 1, 0)
         except TournamentError:
             self.post('Ошибка при загрузке турнира. Выберите другой турнир')
             return
@@ -260,7 +270,6 @@ class Game(object):
             self.state = None
             self.current_tournament.next_tour()
         except AttributeError:
-            # self.post("Выберите турнир - /play [номер турнира]")
             pass
         except NextTourError:
             self.post("Это последний тур")
@@ -272,10 +281,14 @@ class Game(object):
         :return: словарь, позволяющий восстановить игру
         """
         return {
-            'current_tournament': getattr(self.current_tournament, 'url', None)
+            'tournaments_list': self.tournaments_list,
+            'last_shown_tournament': self.last_shown_tournament,
+            'current_tournament': getattr(self.current_tournament, 'url',
+                                          None),
+            'current_tour': getattr(self.current_tournament, 'current_tour',
+                                    None),
+            'current_question': getattr(self.current_tournament,
+                                        'current_question', None),
+            'current_answer': self.current_answer,
+            'hint': getattr(self, 'hint', '')
         }
-
-if __name__ == "__main__":
-    test_tournament = Tournament('http://db.chgk.info/tour/vdi15-03')
-    for q in test_tournament:
-        print(q.question)

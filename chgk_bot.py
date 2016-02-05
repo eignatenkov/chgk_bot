@@ -14,6 +14,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 job_queue = None
+updater_bot = None
 all_games = {}
 
 
@@ -38,7 +39,7 @@ def start(bot, update, **kwargs):
     :return:
     """
     chat_id = update.message.chat_id
-    all_games[chat_id] = Game(bot, chat_id)
+    all_games[chat_id] = Game(bot, chat_id, {})
     text = "/recent - список последних десяти загруженных в базу пакетов\n" \
            "/more - следующие 10 турниров\n" \
            "/play [номер пакета] - играть пакет из списка с переданным " \
@@ -53,7 +54,8 @@ def start(bot, update, **kwargs):
     all_games[chat_id].post(text)
 
 
-def recent(bot, update):
+@update_state
+def recent(bot, update, **kwargs):
     """
     Получить список последних загруженных турниров
     :param bot:
@@ -62,11 +64,12 @@ def recent(bot, update):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id)
+        all_games[chat_id] = Game(bot, chat_id, {})
     all_games[chat_id].get_recent()
 
 
-def more(bot, update):
+@update_state
+def more(bot, update, **kwargs):
     """
     Показать еще десять загруженных турниров
     :param bot:
@@ -75,7 +78,7 @@ def more(bot, update):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id)
+        all_games[chat_id] = Game(bot, chat_id, {})
     try:
         all_games[chat_id].more()
     except TypeError:
@@ -100,17 +103,19 @@ def play(bot, update, args, **kwargs):
         bot.sendMessage(chat_id, "Некорректный параметр для /play")
         return
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id)
+        all_games[chat_id] = Game(bot, chat_id, {})
     all_games[chat_id].play(tournament_id)
 
 
-def ask(bot, update):
+@update_state
+def ask(bot, update, **kwargs):
     """
     обработка команды /ask - задание очередного вопроса
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id)
+        print(chat_id)
+        all_games[chat_id] = Game(bot, chat_id, {})
     try:
         question = all_games[chat_id].ask()
         current_state = all_games[chat_id].state
@@ -144,13 +149,14 @@ def ask(bot, update):
         return
 
 
-def answer(bot, update):
+@update_state
+def answer(bot, update, **kwargs):
     """
     Обработка команды /answer - досрочная печать ответа
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id)
+        all_games[chat_id] = Game(bot, chat_id, {})
     if all_games[chat_id].current_answer:
         all_games[chat_id].post(all_games[chat_id].current_answer)
         all_games[chat_id].post(all_games[chat_id].hint)
@@ -160,13 +166,14 @@ def answer(bot, update):
         return
 
 
-def next_tour(bot, update):
+@update_state
+def next_tour(bot, update, **kwargs):
     """
     Обработка команды /next_tour - переход к следующему туру
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id)
+        all_games[chat_id] = Game(bot, chat_id, {})
     try:
         all_games[chat_id].next_tour()
         ask(bot, update)
@@ -210,12 +217,20 @@ def bot_error(bot, update, error):
 
 
 def main():
-    global job_queue
+    global job_queue, updater_bot
     # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
     token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
+
+    try:
+        with open('chgk_db.json') as f:
+            state = json.load(f)
+            for chat_id, game in state.items():
+                all_games[int(chat_id)] = Game(updater.bot, int(chat_id), game)
+    except FileNotFoundError:
+        pass
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
