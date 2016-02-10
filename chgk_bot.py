@@ -122,7 +122,7 @@ def ask(bot, update, **kwargs):
         all_games[chat_id].post('Вопрос {}'.format(question.question_number))
         sleep(1)
         if question.question_image:
-            all_games[chat_id].post(question.question_image)
+            bot.sendPhoto(chat_id, question.question_image)
         all_games[chat_id].post(question.question)
 
         def read_question(bot):
