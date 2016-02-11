@@ -5,7 +5,7 @@ import logging
 from time import sleep
 import json
 from telegram import Updater, ParseMode
-from bot_tools import Game, NextTourError
+from bot_tools import Game, NextTourError, TournamentError
 
 # Enable logging
 logging.basicConfig(
@@ -39,7 +39,7 @@ def start(bot, update, **kwargs):
     :return:
     """
     chat_id = update.message.chat_id
-    all_games[chat_id] = Game(bot, chat_id, {})
+    all_games[chat_id] = Game(chat_id)
     text = "/recent - список последних десяти загруженных в базу пакетов\n" \
            "/more - следующие 10 турниров\n" \
            "/play [номер пакета] - играть пакет из списка с переданным " \
@@ -64,8 +64,8 @@ def recent(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id, {})
-    all_games[chat_id].get_recent()
+        all_games[chat_id] = Game(chat_id)
+    bot.sendMessage(chat_id, all_games[chat_id].get_recent())
 
 
 @update_state
@@ -78,9 +78,9 @@ def more(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id, {})
+        all_games[chat_id] = Game(chat_id)
     try:
-        all_games[chat_id].more()
+        bot.sendMessage(chat_id, all_games[chat_id].more())
     except TypeError:
         bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
 
@@ -103,8 +103,18 @@ def play(bot, update, args, **kwargs):
         bot.sendMessage(chat_id, "Некорректный параметр для /play")
         return
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id, {})
-    all_games[chat_id].play(tournament_id)
+        all_games[chat_id] = Game(chat_id)
+    try:
+        bot.sendMessage(chat_id, all_games[chat_id].play(tournament_id))
+        bot.sendMessage(chat_id, "/ask - задать первый вопрос")
+    except TypeError:
+        bot.sendMessage(chat_id, "Загрузите список турниров с помощью /recent")
+    except TournamentError:
+        bot.sendMessage(chat_id, "Ошибка при загрузке турнира. Выберите "
+                                 "другой турнир")
+    except IndexError:
+        bot.sendMessage(chat_id, "Нет турнира с таким номером. Выберите "
+                                 "другой турнир")
 
 
 @update_state
@@ -115,10 +125,12 @@ def ask(bot, update, **kwargs):
     chat_id = update.message.chat_id
     if chat_id not in all_games:
         print(chat_id)
-        all_games[chat_id] = Game(bot, chat_id, {})
+        all_games[chat_id] = Game(chat_id)
     try:
-        question = all_games[chat_id].ask()
+        preface, question = all_games[chat_id].ask()
         current_state = all_games[chat_id].state
+        if preface:
+            bot.sendMessage(chat_id, preface)
         bot.sendMessage(chat_id, 'Вопрос {}'.format(question.question_number))
         sleep(1)
         if question.question_image:
@@ -148,6 +160,11 @@ def ask(bot, update, **kwargs):
         job_queue.put(post_answer, 70, repeat=False)
     except AttributeError:
         return
+    except TypeError:
+        bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
+    except StopIteration:
+        bot.sendMessage(chat_id, "Сыграны все вопросы турнира. "
+                                 "Выберите турнир - /play [номер турнира]")
 
 
 @update_state
@@ -157,7 +174,7 @@ def answer(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id, {})
+        all_games[chat_id] = Game(chat_id)
     if all_games[chat_id].current_answer:
         bot.sendMessage(chat_id, all_games[chat_id].current_answer,
                         parse_mode=ParseMode.MARKDOWN)
@@ -175,12 +192,12 @@ def next_tour(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(bot, chat_id, {})
+        all_games[chat_id] = Game(chat_id)
     try:
         all_games[chat_id].next_tour()
         ask(bot, update)
     except NextTourError:
-        pass
+        bot.sendMessage(chat_id, "Это последний тур")
 
 
 def bot_help(bot, update):
@@ -230,7 +247,7 @@ def main():
         with open('chgk_db.json') as f:
             state = json.load(f)
             for chat_id, game in state.items():
-                all_games[int(chat_id)] = Game(updater.bot, int(chat_id), game)
+                all_games[int(chat_id)] = Game(int(chat_id), **game)
     except FileNotFoundError:
         pass
 

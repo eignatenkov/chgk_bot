@@ -149,28 +149,20 @@ class Game(object):
     """
     implements game process for the bot
     """
-    def __init__(self, bot, chat_id, game_dict):
-        self.bot = bot
+    def __init__(self, chat_id, **kwargs):
         self.chat_id = chat_id
-        self.tournaments_list = game_dict.get('tournaments_list')
-        self.last_shown_tournament = game_dict.get('last_shown_tournament', 0)
+        self.tournaments_list = kwargs.get('tournaments_list')
+        self.last_shown_tournament = kwargs.get('last_shown_tournament', 0)
         self.state = None
-        self.current_answer = game_dict.get('current_answer')
-        self.hint = game_dict.get('hint', '')
+        self.current_answer = kwargs.get('current_answer')
+        self.hint = kwargs.get('hint', '')
         self.current_tournament = \
-            Tournament(game_dict.get('current_tournament'))
+            Tournament(kwargs.get('current_tournament'))
         if self.current_tournament:
             self.current_tournament.current_tour = \
-                game_dict.get('current_tour', 1)
+                kwargs.get('current_tour', 1)
             self.current_tournament.current_question = \
-                game_dict.get('current_question', 0)
-
-    def post(self, message):
-        """
-        :param message: text string
-        :return: sends message to the chat with chat_id = self.chat_id
-        """
-        self.bot.sendMessage(self.chat_id, message)
+                kwargs.get('current_question', 0)
 
     def get_recent(self):
         """
@@ -179,14 +171,13 @@ class Game(object):
         """
         self.tournaments_list = recent_tournaments()
         if len(self.tournaments_list) == 0:
-            self.post('сайт db.chgk.info не возвращает список турниров. '
-                      'Попробуйте позже')
-            return
+            return 'сайт db.chgk.info не возвращает список турниров. ' \
+                   'Попробуйте позже'
         text = ''
         for index, tournament in enumerate(self.tournaments_list[:10]):
             text += str(index+1) + '. ' + tournament['title'] + '\n'
         self.last_shown_tournament = 10
-        self.post(text)
+        return text
 
     def more(self):
         """
@@ -194,8 +185,7 @@ class Game(object):
         :return:
         """
         if self.last_shown_tournament == len(self.tournaments_list):
-            self.post("Больше нет")
-            return
+            return "Больше нет"
         else:
             text = ''
             max_border = min(self.last_shown_tournament + 10,
@@ -206,7 +196,7 @@ class Game(object):
                 text += str(index + self.last_shown_tournament + 1) +\
                         '. ' + tournament['title'] + '\n'
             self.last_shown_tournament = max_border
-            self.post(text)
+            return text
 
     def play(self, tournament_id):
         """
@@ -218,16 +208,15 @@ class Game(object):
         try:
             tournament_url = self.tournaments_list[tournament_id-1]['link']
         except TypeError:
-            self.post("Загрузите список турниров с помощью /recent")
-            return
+            raise
+        except IndexError:
+            raise
         try:
             self.current_tournament = Tournament(tournament_url)
             self.state = (tournament_url, 1, 0)
         except TournamentError:
-            self.post('Ошибка при загрузке турнира. Выберите другой турнир')
-            return
-        self.post(self.current_tournament.full_description)
-        self.post("/ask - задать первый вопрос")
+            raise
+        return self.current_tournament.full_description
 
     def ask(self):
         """
@@ -240,6 +229,7 @@ class Game(object):
             self.state = question.id
             self.current_answer = question.full_answer
             self.hint = 'Следующий вопрос - /ask'
+            preface = ''
             if self.state[2] == self.current_tournament.number_of_questions[
                     self.state[1]-1]:
                 if self.state[1] == self.current_tournament.number_of_tours:
@@ -248,19 +238,15 @@ class Game(object):
                     self.hint = 'Конец тура. ' + self.hint
             if self.state[2] == 1:
                 tour_number = self.state[1]-1
-                text = self.current_tournament.tour_titles[tour_number] + \
-                    '\nРедакторы: ' + \
+                tour_titles = self.current_tournament.tour_titles
+                preface = tour_titles[tour_number] + '\nРедакторы: ' + \
                     self.current_tournament.tour_editors[tour_number] + \
                     '\n' + self.current_tournament.tour_info[tour_number]
-                self.post(text)
-            return question
+            return preface, question
         except TypeError:
-            self.post("Выберите турнир - /play [номер турнира]")
-            return
+            raise
         except StopIteration:
-            self.post("Сыграны все вопросы турнира. "
-                      "Выберите турнир - /play [номер турнира]")
-            return
+            raise
 
     def next_tour(self):
         """
@@ -273,7 +259,6 @@ class Game(object):
         except AttributeError:
             pass
         except NextTourError:
-            self.post("Это последний тур")
             raise
 
     def export(self):
