@@ -20,13 +20,14 @@ class XMLField(object):
 
     def __get__(self, instance, owner):
         if self.data[instance]:
-            if self.field_name == 'question':
-                return u'{0} {1}: {2}\n'.format(TRANSLATIONS[self.field_name],
-                                                instance.question_number,
-                                                self.data[instance])
+            if self.field_name == 'sources':
+                text = self.data[instance]
+                text = text.replace('_', '\_')
+                return u'*{0}*: {1}\n'.format(TRANSLATIONS[self.field_name],
+                                              text)
             else:
-                return u'{0}: {1}\n'.format(TRANSLATIONS[self.field_name],
-                                            self.data[instance])
+                return u'*{0}*: {1}\n'.format(TRANSLATIONS[self.field_name],
+                                              self.data[instance])
         else:
             return ''
 

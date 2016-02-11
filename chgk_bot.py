@@ -4,7 +4,7 @@ Bot you can play with
 import logging
 from time import sleep
 import json
-from telegram import Updater
+from telegram import Updater, ParseMode
 from bot_tools import Game, NextTourError
 
 # Enable logging
@@ -51,7 +51,7 @@ def start(bot, update, **kwargs):
            "Сыграть последний загруженный турнир, начиная с первого " \
            "вопроса - последовательно выполнить " \
            "/recent, /play, /ask"
-    all_games[chat_id].post(text)
+    bot.sendMessage(chat_id, text)
 
 
 @update_state
@@ -119,28 +119,29 @@ def ask(bot, update, **kwargs):
     try:
         question = all_games[chat_id].ask()
         current_state = all_games[chat_id].state
-        all_games[chat_id].post('Вопрос {}'.format(question.question_number))
+        bot.sendMessage(chat_id, 'Вопрос {}'.format(question.question_number))
         sleep(1)
         if question.question_image:
             bot.sendPhoto(chat_id, question.question_image)
-        all_games[chat_id].post(question.question)
+        bot.sendMessage(chat_id, question.question)
 
         def read_question(bot):
             if current_state == all_games[chat_id].state:
-                all_games[chat_id].post('Время пошло!')
+                bot.sendMessage(chat_id, 'Время пошло!')
 
         def ten_seconds(bot):
             if current_state == all_games[chat_id].state:
-                all_games[chat_id].post('10 секунд')
+                bot.sendMessage(chat_id, '10 секунд')
 
         def time_is_up(bot):
             if current_state == all_games[chat_id].state:
-                all_games[chat_id].post('Время!')
+                bot.sendMessage(chat_id, 'Время!')
 
         def post_answer(bot):
             if current_state == all_games[chat_id].state:
-                all_games[chat_id].post(question.full_answer)
-                all_games[chat_id].post(all_games[chat_id].hint)
+                bot.sendMessage(chat_id, question.full_answer,
+                                parse_mode=ParseMode.MARKDOWN)
+                bot.sendMessage(chat_id, all_games[chat_id].hint)
         job_queue.put(read_question, 10, repeat=False)
         job_queue.put(ten_seconds, 50, repeat=False)
         job_queue.put(time_is_up, 60, repeat=False)
@@ -158,8 +159,9 @@ def answer(bot, update, **kwargs):
     if chat_id not in all_games:
         all_games[chat_id] = Game(bot, chat_id, {})
     if all_games[chat_id].current_answer:
-        all_games[chat_id].post(all_games[chat_id].current_answer)
-        all_games[chat_id].post(all_games[chat_id].hint)
+        bot.sendMessage(chat_id, all_games[chat_id].current_answer,
+                        parse_mode=ParseMode.MARKDOWN)
+        bot.sendMessage(chat_id, all_games[chat_id].hint)
         all_games[chat_id].state = None
     else:
         bot.sendMessage(chat_id, "Не был задан вопрос")
@@ -218,9 +220,9 @@ def bot_error(bot, update, error):
 
 def main():
     global job_queue, updater_bot
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
 
