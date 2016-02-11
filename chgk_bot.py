@@ -14,19 +14,29 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 job_queue = None
-updater_bot = None
 all_games = {}
 
 
 def update_state(func):
+    """
+    декоратор для сохранения состояния игры в файл
+    """
     def wrapper(*pargs, **kwargs):
-        retval = func(*pargs, **kwargs)
+        """
+        подмена декорируемой функции
+        :param pargs: формат передаваемых параметров в соответствии с
+        документацией по python-telegram-bot
+        :param kwargs: формат передаваемых параметров в соответствии с
+        документацией по python-telegram-bot
+        :return:
+        """
+        result = func(*pargs, **kwargs)
         state = {}
         for key, value in all_games.items():
             state[key] = value.export()
         with open('chgk_db.json', 'w') as chgk_db:
             json.dump(state, chgk_db)
-        return retval
+        return result
     return wrapper
 
 
@@ -138,18 +148,22 @@ def ask(bot, update, **kwargs):
         bot.sendMessage(chat_id, question.question)
 
         def read_question(bot):
+            """ функция для очереди, запуск минуты на обсуждение """
             if current_state == all_games[chat_id].state:
                 bot.sendMessage(chat_id, 'Время пошло!')
 
         def ten_seconds(bot):
+            """ функция для очереди, отсчет 10 секунд """
             if current_state == all_games[chat_id].state:
                 bot.sendMessage(chat_id, '10 секунд')
 
         def time_is_up(bot):
+            """ функция для очереди, время кончилось """
             if current_state == all_games[chat_id].state:
                 bot.sendMessage(chat_id, 'Время!')
 
         def post_answer(bot):
+            """ функция для очереди, печать ответа """
             if current_state == all_games[chat_id].state:
                 bot.sendMessage(chat_id, question.full_answer,
                                 parse_mode=ParseMode.MARKDOWN)
@@ -236,7 +250,11 @@ def bot_error(bot, update, error):
 
 
 def main():
-    global job_queue, updater_bot
+    """
+    считывание состояния игр, запуск бота
+    :return:
+    """
+    global job_queue
     token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
     # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
