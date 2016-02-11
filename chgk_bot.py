@@ -128,14 +128,33 @@ def play(bot, update, args, **kwargs):
 
 
 @update_state
-def ask(bot, update, **kwargs):
+def ask(bot, update, args, **kwargs):
     """
     обработка команды /ask - задание очередного вопроса
+    :param bot:
+    :param update:
+    :param args: может быть передан номер тура и номер вопроса в нем
+    :return:
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
         print(chat_id)
         all_games[chat_id] = Game(chat_id)
+    if len(args) not in [0, 2]:
+        bot.sendMessage(chat_id, "Некорректный вызов команды /ask")
+        return
+    elif len(args) == 2:
+        try:
+            tour, number = [int(arg) for arg in args]
+            print(tour, number)
+            q_numbers = \
+                all_games[chat_id].current_tournament.number_of_questions
+            if q_numbers[0] < q_numbers[1]:
+                tour += 1
+            all_games[chat_id].current_tournament.current_tour = tour
+            all_games[chat_id].current_tournament.current_question = number - 1
+        except ValueError:
+            pass
     try:
         preface, question = all_games[chat_id].ask()
         current_state = all_games[chat_id].state
@@ -255,9 +274,9 @@ def main():
     :return:
     """
     global job_queue
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
 
