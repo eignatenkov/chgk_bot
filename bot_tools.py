@@ -2,6 +2,7 @@
 Implementation of classes Question, Tournament and Game
 """
 from weakref import WeakKeyDictionary
+from operator import itemgetter
 from xml_tools import q_and_a, tournament_info, recent_tournaments
 from constants import TRANSLATIONS
 
@@ -177,6 +178,33 @@ class Game(object):
             text += str(index+1) + '. ' + tournament['title'] + '\n'
         self.last_shown_tournament = 10
         return text
+
+    def search(self, search_line, tour_db):
+        """
+        Поиск турниров в базе по переданной текстовой строке
+        :param search_line: поисковая строка
+        :param tour_db: словарь со списком всех турниров
+        :return: заполняет tournaments_list, возвращает список первых десяти
+        найденных турниров (или всех, если всего найдено меньше, чем десять)
+        """
+        result = []
+        url_template = 'http://db.chgk.info/tour/{}'
+        for tour_id, tour_title in tour_db.items():
+            if search_line.lower() in tour_title.lower():
+                result.append({'link': url_template.format(tour_id),
+                               'title': tour_title})
+        self.tournaments_list = sorted(result, key=itemgetter('link'))
+        if len(self.tournaments_list) == 0:
+            return "Ничего не найдено"
+        else:
+            text = ''
+            max_border = min(10, len(self.tournaments_list))
+            more_tournaments = self.tournaments_list[:max_border]
+            for index, tournament in enumerate(more_tournaments):
+                text += str(index + 1) +\
+                        '. ' + tournament['title'] + '\n'
+            self.last_shown_tournament = max_border
+            return text
 
     def more(self):
         """

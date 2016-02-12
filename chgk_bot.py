@@ -14,6 +14,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 job_queue = None
+tour_db = None
 all_games = {}
 
 
@@ -93,6 +94,23 @@ def more(bot, update, **kwargs):
         bot.sendMessage(chat_id, all_games[chat_id].more())
     except TypeError:
         bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
+
+
+@update_state
+def search(bot, update, args, **kwargs):
+    """
+    Поиск турниров по переданной после команды /search текстовой строке
+    :param bot:
+    :param update:
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    chat_id = update.message.chat_id
+    search_line = ' '.join(args)
+    if chat_id not in all_games:
+        all_games[chat_id] = Game()
+    bot.sendMessage(chat_id, all_games[chat_id].search(search_line, tour_db))
 
 
 @update_state
@@ -273,12 +291,15 @@ def main():
     считывание состояния игр, запуск бота
     :return:
     """
-    global job_queue
+    global job_queue, tour_db
     token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
     # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
+
+    with open('tour_db.json') as f:
+        tour_db = json.load(f)
 
     try:
         with open('chgk_db.json') as f:
@@ -299,6 +320,7 @@ def main():
     dp.addTelegramCommandHandler("ask", ask)
     dp.addTelegramCommandHandler("answer", answer)
     dp.addTelegramCommandHandler("next_tour", next_tour)
+    dp.addTelegramCommandHandler("search", search)
 
     dp.addUnknownTelegramCommandHandler(unknown_command)
     dp.addTelegramRegexHandler('.*', any_message)
