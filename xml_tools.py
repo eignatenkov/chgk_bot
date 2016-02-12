@@ -133,8 +133,10 @@ def q_and_a(tournament_url, tour, question):
         result['comments'] = neat(strip_tags(quest.findtext('Comments')))
     if quest.findtext('PassCriteria'):
         result['pass_criteria'] = neat(strip_tags(quest.findtext('PassCriteria')))
-    result['sources'] = neat(strip_tags(quest.findtext('Sources')))
-    result['authors'] = strip_tags(quest.findtext('Authors'))
+    if quest.findtext('Sources'):
+        result['sources'] = neat(strip_tags(quest.findtext('Sources')))
+    if quest.findtext('Authors'):
+        result['authors'] = strip_tags(quest.findtext('Authors'))
     return result
 
 if __name__ == "__main__":
