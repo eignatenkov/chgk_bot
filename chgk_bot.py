@@ -49,7 +49,7 @@ def start(bot, update, **kwargs):
     :return:
     """
     chat_id = update.message.chat_id
-    all_games[chat_id] = Game(chat_id)
+    all_games[chat_id] = Game()
     text = "/recent - список последних десяти загруженных в базу пакетов\n" \
            "/more - следующие 10 турниров\n" \
            "/play [номер пакета] - играть пакет из списка с переданным " \
@@ -74,7 +74,7 @@ def recent(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(chat_id)
+        all_games[chat_id] = Game()
     bot.sendMessage(chat_id, all_games[chat_id].get_recent())
 
 
@@ -88,7 +88,7 @@ def more(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(chat_id)
+        all_games[chat_id] = Game()
     try:
         bot.sendMessage(chat_id, all_games[chat_id].more())
     except TypeError:
@@ -113,7 +113,7 @@ def play(bot, update, args, **kwargs):
         bot.sendMessage(chat_id, "Некорректный параметр для /play")
         return
     if chat_id not in all_games:
-        all_games[chat_id] = Game(chat_id)
+        all_games[chat_id] = Game()
     try:
         bot.sendMessage(chat_id, all_games[chat_id].play(tournament_id))
         bot.sendMessage(chat_id, "/ask - задать первый вопрос")
@@ -139,7 +139,7 @@ def ask(bot, update, args, **kwargs):
     chat_id = update.message.chat_id
     if chat_id not in all_games:
         print(chat_id)
-        all_games[chat_id] = Game(chat_id)
+        all_games[chat_id] = Game()
     if len(args) not in [0, 2]:
         bot.sendMessage(chat_id, "Некорректный вызов команды /ask")
         return
@@ -207,7 +207,7 @@ def answer(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(chat_id)
+        all_games[chat_id] = Game()
     if all_games[chat_id].current_answer:
         bot.sendMessage(chat_id, all_games[chat_id].current_answer,
                         parse_mode=ParseMode.MARKDOWN)
@@ -225,10 +225,10 @@ def next_tour(bot, update, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        all_games[chat_id] = Game(chat_id)
+        all_games[chat_id] = Game()
     try:
         all_games[chat_id].next_tour()
-        ask(bot, update)
+        ask(bot, update, '')
     except NextTourError:
         bot.sendMessage(chat_id, "Это последний тур")
 
@@ -274,9 +274,9 @@ def main():
     :return:
     """
     global job_queue
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
 
@@ -284,7 +284,7 @@ def main():
         with open('chgk_db.json') as f:
             state = json.load(f)
             for chat_id, game in state.items():
-                all_games[int(chat_id)] = Game(int(chat_id), **game)
+                all_games[int(chat_id)] = Game(**game)
     except FileNotFoundError:
         pass
 

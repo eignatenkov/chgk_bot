@@ -149,8 +149,7 @@ class Game(object):
     """
     implements game process for the bot
     """
-    def __init__(self, chat_id, **kwargs):
-        self.chat_id = chat_id
+    def __init__(self, **kwargs):
         self.tournaments_list = kwargs.get('tournaments_list')
         self.last_shown_tournament = kwargs.get('last_shown_tournament', 0)
         self.state = None
