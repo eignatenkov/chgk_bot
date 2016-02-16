@@ -154,10 +154,11 @@ def ask(bot, update, args, **kwargs):
     """
     chat_id = update.message.chat_id
     if chat_id not in all_games:
-        print(chat_id)
+        logger.info("Новый участник %s, создаем игру", chat_id)
         all_games[chat_id] = Game()
     if len(args) not in [0, 2]:
         bot.sendMessage(chat_id, "Некорректный вызов команды /ask")
+        logger.warning("Некорректный вызов команды /ask. args: %s", args)
         return
     elif len(args) == 2:
         try:
@@ -210,8 +211,10 @@ def ask(bot, update, args, **kwargs):
     except AttributeError:
         return
     except TypeError:
+        logger.warning("Не выбран турнир")
         bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
     except StopIteration:
+        logger.info("Кончились вопросы турнира")
         bot.sendMessage(chat_id, "Сыграны все вопросы турнира. "
                                  "Выберите турнир - /play [номер турнира]")
 
