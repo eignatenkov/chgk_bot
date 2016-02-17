@@ -288,6 +288,18 @@ def bot_error(bot, update, error):
     logger.warning('Update %s caused error %s', update, error)
 
 
+def broadcast(bot, update):
+    """
+    Отправка сообщения всем пользователям
+    :param bot:
+    :param update:
+    :return:
+    """
+    if update.message.chat_id == 94366427:
+        for chat_id in all_games:
+            bot.sendMessage(chat_id, update.message.text[11:])
+
+
 def main():
     """
     считывание состояния игр, запуск бота
@@ -323,6 +335,7 @@ def main():
     dp.addTelegramCommandHandler("answer", answer)
     dp.addTelegramCommandHandler("next_tour", next_tour)
     dp.addTelegramCommandHandler("search", search)
+    dp.addTelegramCommandHandler("broadcast", broadcast)
 
     dp.addUnknownTelegramCommandHandler(unknown_command)
     dp.addTelegramRegexHandler('.*', any_message)
