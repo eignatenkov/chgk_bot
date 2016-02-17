@@ -4,7 +4,7 @@ Bot you can play with
 import logging
 from time import sleep
 import json
-from telegram import Updater, ParseMode
+from telegram import Updater, ParseMode, TelegramError
 from bot_tools import Game, NextTourError, TournamentError
 
 # Enable logging
@@ -298,8 +298,19 @@ def broadcast(bot, update):
     :return:
     """
     if update.message.chat_id == 94366427:
+        to_delete = []
         for chat_id in all_games:
-            bot.sendMessage(chat_id, update.message.text[11:])
+            try:
+                bot.sendMessage(chat_id, update.message.text[11:])
+                logger.info("Успешно отправлено %s", chat_id)
+            except TelegramError as e:
+                if e.message == 'Unauthorized':
+                    logger.info("Не отправлено %s, бот блокирован", chat_id)
+                    to_delete.append(chat_id)
+                else:
+                    logger.info("Не отправлено, %s", e.message)
+        for user in to_delete:
+            all_games.pop(user)
 
 
 def main():
