@@ -4,7 +4,7 @@ Bot you can play with
 import logging
 from time import sleep
 import json
-from telegram import Updater, ParseMode, TelegramError
+from telegram import Updater, ParseMode, ReplyKeyboardMarkup, TelegramError
 from bot_tools import Game, NextTourError, TournamentError
 
 # Enable logging
@@ -182,7 +182,11 @@ def ask(bot, update, args, **kwargs):
         sleep(1)
         if question.question_image:
             bot.sendPhoto(chat_id, question.question_image)
-        bot.sendMessage(chat_id, question.question)
+        custom_keyboard = [['/ask', '/answer']]
+        reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                           resize_keyboard=True)
+        bot.sendMessage(chat_id, question.question,
+                        reply_markup=reply_markup)
 
         def read_question(bot):
             """ функция для очереди, запуск минуты на обсуждение """
@@ -202,9 +206,13 @@ def ask(bot, update, args, **kwargs):
         def post_answer(bot):
             """ функция для очереди, печать ответа """
             if current_state == all_games[chat_id].state:
+                custom_keyboard = [['/ask']]
+                reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                                   resize_keyboard=True)
                 bot.sendMessage(chat_id, question.full_answer,
-                                parse_mode=ParseMode.MARKDOWN)
-                bot.sendMessage(chat_id, all_games[chat_id].hint)
+                                parse_mode=ParseMode.MARKDOWN,
+                                reply_markup=reply_markup)
+                # bot.sendMessage(chat_id, all_games[chat_id].hint)
         job_queue.put(read_question, 10, repeat=False)
         job_queue.put(ten_seconds, 50, repeat=False)
         job_queue.put(time_is_up, 60, repeat=False)
@@ -319,14 +327,17 @@ def main():
     :return:
     """
     global job_queue, tour_db
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
 
-    with open('tour_db.json') as f:
-        tour_db = json.load(f)
+    try:
+        with open('tour_db.json') as f:
+            tour_db = json.load(f)
+    except FileNotFoundError:
+        pass
 
     try:
         with open('chgk_db.json') as f:
