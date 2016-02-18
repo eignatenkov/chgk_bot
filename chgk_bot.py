@@ -6,6 +6,7 @@ from time import sleep
 import json
 from telegram import Updater, ParseMode, ReplyKeyboardMarkup, TelegramError
 from bot_tools import Game, NextTourError, TournamentError
+from xml_tools import export_tournaments
 
 # Enable logging
 logging.basicConfig(
@@ -337,7 +338,9 @@ def main():
         with open('tour_db.json') as f:
             tour_db = json.load(f)
     except FileNotFoundError:
-        pass
+        tour_db = export_tournaments()
+        with open('tour_db.json', 'w') as f:
+            json.dump(tour_db, f)
 
     try:
         with open('chgk_db.json') as f:
