@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """ tools for getting questions and tournaments from db.chgk.info
 """
-
 from urllib.request import urlopen, HTTPError
 from html.parser import HTMLParser
 from lxml import etree, html
+from bs4 import BeautifulSoup
 
 
 def neat(text):
@@ -139,7 +139,37 @@ def q_and_a(tournament_url, tour, question):
         result['authors'] = strip_tags(quest.findtext('Authors'))
     return result
 
+
+def export_tournaments():
+    """
+    Выгрузка всех турниров из базы вопросов и сохранение их
+    в файл tour_db.json
+    :return:
+    """
+
+    tournaments = {}
+    url_template = 'http://db.chgk.info/tour/{}/xml'
+
+    def parse_dir(title=None):
+        """
+        рекурсивная функция обхода дерева турниров в db.chgk.info
+        :param title: Название поддиректории в дереве
+        :return: заполненный словарь tournaments
+        """
+        if title:
+            soup = BeautifulSoup(urlopen(url_template.format(title)),
+                                 'lxml-xml')
+        else:
+            soup = BeautifulSoup(urlopen('http://db.chgk.info/tour/xml'),
+                                 'lxml-xml')
+        for tour in soup.findAll('tour'):
+            if tour.Type.text == 'Ч':
+                tournaments[tour.TextId.text] = tour.Title.text
+            elif tour.Type.text == 'Г':
+                parse_dir(tour.TextId.text)
+
+    parse_dir()
+    return tournaments
+
 if __name__ == "__main__":
-    print(tournament_info("http://db.chgk.info/tour/balt16-2")['description'])
-    for item in q_and_a("http://db.chgk.info/tour/balt16-2", 1, 1).values():
-        print(item)
+    export_tournaments()
