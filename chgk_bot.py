@@ -173,7 +173,8 @@ def ask(bot, update, args, **kwargs):
             all_games[chat_id].current_tournament.current_tour = tour
             all_games[chat_id].current_tournament.current_question = number - 1
         except ValueError:
-            pass
+            logger.warning("Некорректный вызов команды /ask. args: %s", args)
+            return
     try:
         preface, question = all_games[chat_id].ask()
         current_state = all_games[chat_id].state
@@ -211,7 +212,7 @@ def ask(bot, update, args, **kwargs):
         job_queue.put(time_is_up, 60, repeat=False)
         job_queue.put(post_answer, 70, repeat=False)
     except AttributeError:
-        return
+        logger.warning("Ошибка Attribute Error")
     except TypeError:
         logger.warning("Не выбран турнир")
         bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
