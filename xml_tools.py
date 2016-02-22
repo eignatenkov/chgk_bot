@@ -59,16 +59,11 @@ def recent_tournaments():
     :return: list of recent tournaments
     """
     recent_url = urlopen("http://db.chgk.info/last/feed")
-    recent_data = recent_url.read()
-    recent_url.close()
-    recent_xml = etree.fromstring(recent_data)
+    soup = BeautifulSoup(recent_url, 'lxml-xml')
     tournaments = []
-    for item in recent_xml[0]:
-        if item.tag == 'item':
-            tournament = dict()
-            for child in item:
-                tournament[child.tag] = child.text
-            tournaments.append(tournament)
+    for item in soup.find_all('item'):
+        tournaments.append({'title': item.title.text,
+                            'link': item.link.text})
     return tournaments
 
 
