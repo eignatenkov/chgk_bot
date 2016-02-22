@@ -26,7 +26,7 @@ def strip_tags(tagged_text):
     :param tagged_text: input text
     :return: edited text without any HTML tags in it
     """
-    soup = BeautifulSoup(tagged_text.text)
+    soup = BeautifulSoup(tagged_text.text, 'lxml')
     return soup.text
 
 
