@@ -3,8 +3,6 @@
 """ tools for getting questions and tournaments from db.chgk.info
 """
 from urllib.request import urlopen, HTTPError
-from html.parser import HTMLParser
-from lxml import etree, html
 from bs4 import BeautifulSoup
 
 
@@ -22,35 +20,14 @@ def neat(text):
     return text
 
 
-class MLStripper(HTMLParser):
-    """ class from stackoverflow post to strip all HTML tags from the text
-    of the question
-    """
-    def __init__(self):
-        super().__init__()
-        self.reset()
-        self.strict = False
-        self.convert_charrefs = True
-        self.fed = []
-
-    def handle_data(self, d):
-        self.fed.append(d)
-
-    def get_data(self):
-        return ''.join(self.fed)
-
-
-def strip_tags(html):
+def strip_tags(tagged_text):
     """
     function that uses MLStripper and strips all HTML tags from text
-    :param html: input text
+    :param tagged_text: input text
     :return: edited text without any HTML tags in it
     """
-    # сначала заменим тэги для тире на --, чтобы не потерять их
-    html = html.replace('&mdash;', '--')
-    s = MLStripper()
-    s.feed(html)
-    return s.get_data()
+    soup = BeautifulSoup(tagged_text.text)
+    return soup.text
 
 
 def recent_tournaments():
@@ -114,23 +91,22 @@ def q_and_a(tournament_url, tour, question):
     url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(
         tournament_url.split('/')[-1], tour, question)
     question_url = urlopen(url)
-    quest = etree.fromstring(question_url.read())
+    quest = BeautifulSoup(question_url, 'lxml-xml')
     question_url.close()
     result = dict()
-    result['question'] = neat(strip_tags(quest.findtext('Question')))
-    xhtml = html.document_fromstring(quest.findtext('Question'))
-    imageurl = xhtml.xpath('//img/@src')
-    if len(imageurl) > 0:
-        result['question_image'] = imageurl[0]
-    result['answer'] = neat(strip_tags(quest.findtext('Answer')))
-    if quest.findtext('Comments'):
-        result['comments'] = neat(strip_tags(quest.findtext('Comments')))
-    if quest.findtext('PassCriteria'):
-        result['pass_criteria'] = neat(strip_tags(quest.findtext('PassCriteria')))
-    if quest.findtext('Sources'):
-        result['sources'] = neat(strip_tags(quest.findtext('Sources')))
-    if quest.findtext('Authors'):
-        result['authors'] = strip_tags(quest.findtext('Authors'))
+    result['question'] = neat(strip_tags(quest.Question))
+    imageurl = BeautifulSoup(quest.Question.text, 'lxml').img
+    if imageurl:
+        result['question_image'] = imageurl['src']
+    result['answer'] = neat(strip_tags(quest.Answer))
+    if quest.Comments:
+        result['comments'] = neat(strip_tags(quest.Comments))
+    if quest.PassCriteria:
+        result['pass_criteria'] = neat(strip_tags(quest.PassCriteria))
+    if quest.Sources:
+        result['sources'] = neat(strip_tags(quest.Sources))
+    if quest.Authors:
+        result['authors'] = strip_tags(quest.Authors)
     return result
 
 
