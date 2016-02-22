@@ -266,9 +266,13 @@ class Game(object):
             if self.state[2] == 1:
                 tour_number = self.state[1]-1
                 tour_titles = self.current_tournament.tour_titles
-                preface = tour_titles[tour_number] + '\nРедакторы: ' + \
-                    self.current_tournament.tour_editors[tour_number] + \
-                    '\n' + self.current_tournament.tour_info[tour_number]
+                preface = tour_titles[tour_number]
+                if self.current_tournament.tour_editors[tour_number]:
+                    preface += '\nРедакторы: ' + \
+                    self.current_tournament.tour_editors[tour_number]
+                if self.current_tournament.tour_info[tour_number]:
+                    preface += '\n' + \
+                               self.current_tournament.tour_info[tour_number]
             return preface, question
         except TypeError:
             raise

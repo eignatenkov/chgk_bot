@@ -79,27 +79,26 @@ def tournament_info(url):
         tournament_url = urlopen(url)
     except HTTPError:
         return ''
-    tournament = etree.fromstring(tournament_url.read())
+    tournament = BeautifulSoup(tournament_url, 'lxml-xml')
     tournament_url.close()
     result = dict()
-    result['title'] = tournament.find('Title').text
-    description = '\n' + tournament.find('PlayedAt').text
-    if tournament.find('Editors').text is not None:
-        description += '\n' + u'Редакторы: ' + tournament.find('Editors').text
-    if tournament.findtext('Info') is not None:
-        description += '\n' + neat(tournament.findtext('Info'))
+    result['title'] = neat(tournament.Title.text)
+    description = '\n' + neat(tournament.PlayedAt.text)
+    if tournament.Editors.text:
+        description += '\n' + u'Редакторы: ' + tournament.Editors.text
+    if tournament.Info.text:
+        description += '\n' + neat(tournament.Info.text)
     result['description'] = description
-    result['n_tours'] = int(tournament.findtext('ChildrenNum'))
-    result['n_questions'] = []
-    result['tour_titles'] = []
-    result['tour_info'] = []
-    result['tour_editors'] = []
-    for child in tournament:
-        if child.tag == 'tour':
-            result['n_questions'].append(int(child.findtext('QuestionsNum')))
-            result['tour_titles'].append(child.findtext('Title'))
-            result['tour_info'].append(neat(child.findtext('Info')))
-            result['tour_editors'].append(child.findtext('Editors'))
+    result['n_tours'] = int(tournament.ChildrenNum.text)
+    result['n_questions'] = [int(item.QuestionsNum.text) for item in
+                             tournament.find_all('tour')]
+    result['tour_titles'] = [item.Title.text for item in
+                             tournament.find_all('tour')]
+    result['tour_info'] = [neat(item.Info.text) if item.Info != tournament.Info
+                           else '' for item in tournament.find_all('tour')]
+    result['tour_editors'] = [item.Editors.text if
+                              item.Editors != tournament.Editors else '' for
+                              item in tournament.find_all('tour')]
     return result
 
 
