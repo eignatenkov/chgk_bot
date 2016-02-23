@@ -23,11 +23,14 @@ def neat(text):
 def strip_tags(tagged_text):
     """
     function that uses MLStripper and strips all HTML tags from text
-    :param tagged_text: input text
+    :param tagged_text: tag from BeautifulSoup object
     :return: edited text without any HTML tags in it
     """
-    soup = BeautifulSoup(tagged_text.text, 'lxml')
-    return soup.text
+    if '&' in tagged_text.text or '<' in tagged_text.text:
+        soup = BeautifulSoup(tagged_text.text, 'lxml')
+        return soup.text
+    else:
+        return tagged_text.text
 
 
 def recent_tournaments():
