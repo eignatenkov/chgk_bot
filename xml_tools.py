@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """ tools for getting questions and tournaments from db.chgk.info
 """
+import json
 from urllib.request import urlopen, HTTPError
 from bs4 import BeautifulSoup
 
@@ -137,7 +138,8 @@ def export_tournaments():
                                  'lxml-xml')
         for tour in soup.findAll('tour'):
             if tour.Type.text == 'Ч':
-                tournaments[tour.TextId.text] = tour.Title.text
+                tournaments[tour.TextId.text] = {'title': tour.Title.text,
+                                                 'date': tour.PlayedAt.text}
             elif tour.Type.text == 'Г':
                 parse_dir(tour.TextId.text)
 
@@ -145,4 +147,5 @@ def export_tournaments():
     return tournaments
 
 if __name__ == "__main__":
-    export_tournaments()
+    with open('tour_db.json', 'w') as f:
+        json.dump(export_tournaments(), f)
