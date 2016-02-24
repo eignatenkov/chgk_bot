@@ -4,7 +4,7 @@ Bot you can play with
 import logging
 from time import sleep
 import json
-from telegram import Updater, ParseMode, TelegramError
+from telegram import Updater, ParseMode, ReplyKeyboardMarkup, TelegramError
 from bot_tools import Game, NextTourError, TournamentError
 from xml_tools import export_tournaments
 
@@ -62,7 +62,9 @@ def start(bot, update, **kwargs):
            "/ask 2 4 - задать 4-й вопрос 2-го тура текущего турнира\n" \
            "/answer - увидеть ответ, не дожидаясь конца минуты\n" \
            "/next_tour - следующий тур"
-    bot.sendMessage(chat_id, text)
+    custom_keyboard = [['/recent']]
+    reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
+    bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
 @update_state
@@ -76,7 +78,9 @@ def recent(bot, update, **kwargs):
     chat_id = update.message.chat_id
     if chat_id not in all_games:
         all_games[chat_id] = Game()
-    bot.sendMessage(chat_id, all_games[chat_id].get_recent())
+    keyboard, text = all_games[chat_id].get_recent()
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
 @update_state
@@ -91,7 +95,9 @@ def more(bot, update, **kwargs):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     try:
-        bot.sendMessage(chat_id, all_games[chat_id].more())
+        keyboard, text = all_games[chat_id].more()
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        bot.sendMessage(chat_id, text, reply_markup=reply_markup)
     except TypeError:
         bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
 
@@ -110,7 +116,9 @@ def search(bot, update, args, **kwargs):
     search_line = ' '.join(args)
     if chat_id not in all_games:
         all_games[chat_id] = Game()
-    bot.sendMessage(chat_id, all_games[chat_id].search(search_line, tour_db))
+    keyboard, text = all_games[chat_id].search(search_line, tour_db)
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
 @update_state
@@ -133,8 +141,12 @@ def play(bot, update, args, **kwargs):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     try:
-        bot.sendMessage(chat_id, all_games[chat_id].play(tournament_id))
-        bot.sendMessage(chat_id, "/ask - задать первый вопрос")
+        custom_keyboard = [['/ask']]
+        reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                           resize_keyboard=True)
+        bot.sendMessage(chat_id, all_games[chat_id].play(tournament_id),
+                        reply_markup=reply_markup)
+
     except TypeError:
         bot.sendMessage(chat_id, "Загрузите список турниров с помощью /recent")
     except TournamentError:
@@ -184,7 +196,11 @@ def ask(bot, update, args, **kwargs):
         sleep(1)
         if question.question_image:
             bot.sendPhoto(chat_id, question.question_image)
-        bot.sendMessage(chat_id, question.question)
+        custom_keyboard = [['/ask', '/answer']]
+        reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                           resize_keyboard=True)
+        bot.sendMessage(chat_id, question.question,
+                        reply_markup=reply_markup)
 
         def read_question(bot):
             """ функция для очереди, запуск минуты на обсуждение """
@@ -204,9 +220,14 @@ def ask(bot, update, args, **kwargs):
         def post_answer(bot):
             """ функция для очереди, печать ответа """
             if current_state == all_games[chat_id].state:
+                custom_keyboard = [['/ask']]
+                reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                                   resize_keyboard=True)
                 bot.sendMessage(chat_id, question.full_answer,
-                                parse_mode=ParseMode.MARKDOWN)
-                bot.sendMessage(chat_id, all_games[chat_id].hint)
+                                parse_mode=ParseMode.MARKDOWN,
+                                reply_markup=reply_markup)
+                if all_games[chat_id].hint:
+                    bot.sendMessage(chat_id, all_games[chat_id].hint)
         job_queue.put(read_question, 10, repeat=False)
         job_queue.put(ten_seconds, 50, repeat=False)
         job_queue.put(time_is_up, 60, repeat=False)
@@ -231,9 +252,14 @@ def answer(bot, update, **kwargs):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     if all_games[chat_id].current_answer:
+        custom_keyboard = [['/ask']]
+        reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                           resize_keyboard=True)
         bot.sendMessage(chat_id, all_games[chat_id].current_answer,
-                        parse_mode=ParseMode.MARKDOWN)
-        bot.sendMessage(chat_id, all_games[chat_id].hint)
+                        parse_mode=ParseMode.MARKDOWN,
+                        reply_markup=reply_markup)
+        if all_games[chat_id].hint:
+            bot.sendMessage(chat_id, all_games[chat_id].hint)
         all_games[chat_id].state = None
     else:
         bot.sendMessage(chat_id, "Не был задан вопрос")
