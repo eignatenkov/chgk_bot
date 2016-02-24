@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 """ tools for getting questions and tournaments from db.chgk.info
 """
+import json
 from urllib.request import urlopen, HTTPError
-from html.parser import HTMLParser
-from lxml import etree, html
 from bs4 import BeautifulSoup
 
 
@@ -22,35 +21,17 @@ def neat(text):
     return text
 
 
-class MLStripper(HTMLParser):
-    """ class from stackoverflow post to strip all HTML tags from the text
-    of the question
-    """
-    def __init__(self):
-        super().__init__()
-        self.reset()
-        self.strict = False
-        self.convert_charrefs = True
-        self.fed = []
-
-    def handle_data(self, d):
-        self.fed.append(d)
-
-    def get_data(self):
-        return ''.join(self.fed)
-
-
-def strip_tags(html):
+def strip_tags(tagged_text):
     """
     function that uses MLStripper and strips all HTML tags from text
-    :param html: input text
+    :param tagged_text: tag from BeautifulSoup object
     :return: edited text without any HTML tags in it
     """
-    # сначала заменим тэги для тире на --, чтобы не потерять их
-    html = html.replace('&mdash;', '--')
-    s = MLStripper()
-    s.feed(html)
-    return s.get_data()
+    if '&' in tagged_text.text or '<' in tagged_text.text:
+        soup = BeautifulSoup(tagged_text.text, 'lxml')
+        return soup.text
+    else:
+        return tagged_text.text
 
 
 def recent_tournaments():
@@ -59,16 +40,11 @@ def recent_tournaments():
     :return: list of recent tournaments
     """
     recent_url = urlopen("http://db.chgk.info/last/feed")
-    recent_data = recent_url.read()
-    recent_url.close()
-    recent_xml = etree.fromstring(recent_data)
+    soup = BeautifulSoup(recent_url, 'lxml-xml')
     tournaments = []
-    for item in recent_xml[0]:
-        if item.tag == 'item':
-            tournament = dict()
-            for child in item:
-                tournament[child.tag] = child.text
-            tournaments.append(tournament)
+    for item in soup.find_all('item'):
+        tournaments.append({'title': item.title.text,
+                            'link': item.link.text})
     return tournaments
 
 
@@ -84,27 +60,26 @@ def tournament_info(url):
         tournament_url = urlopen(url)
     except HTTPError:
         return ''
-    tournament = etree.fromstring(tournament_url.read())
+    tournament = BeautifulSoup(tournament_url, 'lxml-xml')
     tournament_url.close()
     result = dict()
-    result['title'] = tournament.find('Title').text
-    description = '\n' + tournament.find('PlayedAt').text
-    if tournament.find('Editors').text is not None:
-        description += '\n' + u'Редакторы: ' + tournament.find('Editors').text
-    if tournament.findtext('Info') is not None:
-        description += '\n' + neat(tournament.findtext('Info'))
+    result['title'] = neat(tournament.Title.text)
+    description = '\n' + neat(tournament.PlayedAt.text)
+    if tournament.Editors.text:
+        description += '\n' + u'Редакторы: ' + tournament.Editors.text
+    if tournament.Info.text:
+        description += '\n' + neat(tournament.Info.text)
     result['description'] = description
-    result['n_tours'] = int(tournament.findtext('ChildrenNum'))
-    result['n_questions'] = []
-    result['tour_titles'] = []
-    result['tour_info'] = []
-    result['tour_editors'] = []
-    for child in tournament:
-        if child.tag == 'tour':
-            result['n_questions'].append(int(child.findtext('QuestionsNum')))
-            result['tour_titles'].append(child.findtext('Title'))
-            result['tour_info'].append(neat(child.findtext('Info')))
-            result['tour_editors'].append(child.findtext('Editors'))
+    result['n_tours'] = int(tournament.ChildrenNum.text)
+    result['n_questions'] = [int(item.QuestionsNum.text) for item in
+                             tournament.find_all('tour')]
+    result['tour_titles'] = [item.Title.text for item in
+                             tournament.find_all('tour')]
+    result['tour_info'] = [neat(item.Info.text) if item.Info != tournament.Info
+                           else '' for item in tournament.find_all('tour')]
+    result['tour_editors'] = [item.Editors.text if
+                              item.Editors != tournament.Editors else '' for
+                              item in tournament.find_all('tour')]
     return result
 
 
@@ -120,23 +95,22 @@ def q_and_a(tournament_url, tour, question):
     url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(
         tournament_url.split('/')[-1], tour, question)
     question_url = urlopen(url)
-    quest = etree.fromstring(question_url.read())
+    quest = BeautifulSoup(question_url, 'lxml-xml')
     question_url.close()
     result = dict()
-    result['question'] = neat(strip_tags(quest.findtext('Question')))
-    xhtml = html.document_fromstring(quest.findtext('Question'))
-    imageurl = xhtml.xpath('//img/@src')
-    if len(imageurl) > 0:
-        result['question_image'] = imageurl[0]
-    result['answer'] = neat(strip_tags(quest.findtext('Answer')))
-    if quest.findtext('Comments'):
-        result['comments'] = neat(strip_tags(quest.findtext('Comments')))
-    if quest.findtext('PassCriteria'):
-        result['pass_criteria'] = neat(strip_tags(quest.findtext('PassCriteria')))
-    if quest.findtext('Sources'):
-        result['sources'] = neat(strip_tags(quest.findtext('Sources')))
-    if quest.findtext('Authors'):
-        result['authors'] = strip_tags(quest.findtext('Authors'))
+    result['question'] = neat(strip_tags(quest.Question))
+    imageurl = BeautifulSoup(quest.Question.text, 'lxml').img
+    if imageurl:
+        result['question_image'] = imageurl['src']
+    result['answer'] = neat(strip_tags(quest.Answer))
+    if quest.Comments:
+        result['comments'] = neat(strip_tags(quest.Comments))
+    if quest.PassCriteria:
+        result['pass_criteria'] = neat(strip_tags(quest.PassCriteria))
+    if quest.Sources:
+        result['sources'] = neat(strip_tags(quest.Sources))
+    if quest.Authors:
+        result['authors'] = strip_tags(quest.Authors)
     return result
 
 
@@ -164,7 +138,8 @@ def export_tournaments():
                                  'lxml-xml')
         for tour in soup.findAll('tour'):
             if tour.Type.text == 'Ч':
-                tournaments[tour.TextId.text] = tour.Title.text
+                tournaments[tour.TextId.text] = {'title': tour.Title.text,
+                                                 'date': tour.PlayedAt.text}
             elif tour.Type.text == 'Г':
                 parse_dir(tour.TextId.text)
 
@@ -172,4 +147,5 @@ def export_tournaments():
     return tournaments
 
 if __name__ == "__main__":
-    export_tournaments()
+    with open('tour_db.json', 'w') as f:
+        json.dump(export_tournaments(), f)

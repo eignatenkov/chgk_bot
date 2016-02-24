@@ -189,11 +189,12 @@ class Game(object):
         """
         result = []
         url_template = 'http://db.chgk.info/tour/{}'
-        for tour_id, tour_title in tour_db.items():
-            if search_line.lower() in tour_title.lower():
+        for tour_id, tour_info in tour_db.items():
+            if search_line.lower() in tour_info['title'].lower():
                 result.append({'link': url_template.format(tour_id),
-                               'title': tour_title})
-        self.tournaments_list = sorted(result, key=itemgetter('link'))
+                               'date': tour_info['date'],
+                               'title': tour_info['title']})
+        self.tournaments_list = sorted(result, key=itemgetter('date'))
         if len(self.tournaments_list) == 0:
             return "Ничего не найдено"
         else:
@@ -201,9 +202,10 @@ class Game(object):
             max_border = min(10, len(self.tournaments_list))
             more_tournaments = self.tournaments_list[:max_border]
             for index, tournament in enumerate(more_tournaments):
-                text += str(index + 1) +\
-                        '. ' + tournament['title'] + '\n'
-            self.last_shown_tournament = max_border
+                text += '{0}. {1} {2}\n'.format(str(index + 1),
+                                                tournament['title'],
+                                                tournament['date'])
+                self.last_shown_tournament = max_border
             return text
 
     def more(self):
@@ -220,8 +222,10 @@ class Game(object):
             more_tournaments = self.tournaments_list[
                 self.last_shown_tournament:max_border]
             for index, tournament in enumerate(more_tournaments):
-                text += str(index + self.last_shown_tournament + 1) +\
-                        '. ' + tournament['title'] + '\n'
+                text += '{0}. {1} {2}\n'.format(
+                    str(index + self.last_shown_tournament + 1),
+                    tournament['title'],
+                    tournament.get('date', ''))
             self.last_shown_tournament = max_border
             return text
 
@@ -266,9 +270,13 @@ class Game(object):
             if self.state[2] == 1:
                 tour_number = self.state[1]-1
                 tour_titles = self.current_tournament.tour_titles
-                preface = tour_titles[tour_number] + '\nРедакторы: ' + \
-                    self.current_tournament.tour_editors[tour_number] + \
-                    '\n' + self.current_tournament.tour_info[tour_number]
+                preface = tour_titles[tour_number]
+                if self.current_tournament.tour_editors[tour_number]:
+                    preface += '\nРедакторы: ' + \
+                    self.current_tournament.tour_editors[tour_number]
+                if self.current_tournament.tour_info[tour_number]:
+                    preface += '\n' + \
+                               self.current_tournament.tour_info[tour_number]
             return preface, question
         except TypeError:
             raise
