@@ -62,7 +62,9 @@ def start(bot, update, **kwargs):
            "/ask 2 4 - задать 4-й вопрос 2-го тура текущего турнира\n" \
            "/answer - увидеть ответ, не дожидаясь конца минуты\n" \
            "/next_tour - следующий тур"
-    bot.sendMessage(chat_id, text)
+    custom_keyboard = [['/recent']]
+    reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
+    bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
 @update_state
@@ -76,7 +78,9 @@ def recent(bot, update, **kwargs):
     chat_id = update.message.chat_id
     if chat_id not in all_games:
         all_games[chat_id] = Game()
-    bot.sendMessage(chat_id, all_games[chat_id].get_recent())
+    keyboard, text = all_games[chat_id].get_recent()
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
 @update_state
@@ -91,7 +95,9 @@ def more(bot, update, **kwargs):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     try:
-        bot.sendMessage(chat_id, all_games[chat_id].more())
+        keyboard, text = all_games[chat_id].more()
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        bot.sendMessage(chat_id, text, reply_markup=reply_markup)
     except TypeError:
         bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
 
@@ -110,7 +116,9 @@ def search(bot, update, args, **kwargs):
     search_line = ' '.join(args)
     if chat_id not in all_games:
         all_games[chat_id] = Game()
-    bot.sendMessage(chat_id, all_games[chat_id].search(search_line, tour_db))
+    keyboard, text = all_games[chat_id].search(search_line, tour_db)
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
 @update_state

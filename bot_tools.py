@@ -164,6 +164,24 @@ class Game(object):
             self.current_tournament.current_question = \
                 kwargs.get('current_question', 0)
 
+    @staticmethod
+    def get_keyboard(begin, end):
+        """
+        :param begin: начало нумерации передаваемых турниров
+        :param end: конец нумерации передаваемых турниров
+        :return: раскладка виртуальной клавиатуры для выбора турниров
+        """
+        current_number = begin
+        answer = []
+        while current_number <= end:
+            next_line = ['/play {}'.format(i) for i in range(
+                current_number, (min(current_number+4, end + 1)))]
+            if len(next_line) < 4 and end - begin == 9:
+                next_line.append('/more')
+            answer.append(next_line)
+            current_number += 4
+        return answer
+
     def get_recent(self):
         """
         :return: loads list of recent tournaments to self.tournaments_list;
@@ -177,7 +195,7 @@ class Game(object):
         for index, tournament in enumerate(self.tournaments_list[:10]):
             text += str(index+1) + '. ' + tournament['title'] + '\n'
         self.last_shown_tournament = 10
-        return text
+        return Game.get_keyboard(1, 10), text
 
     def search(self, search_line, tour_db):
         """
@@ -206,7 +224,7 @@ class Game(object):
                                                 tournament['title'],
                                                 tournament['date'])
                 self.last_shown_tournament = max_border
-            return text
+            return Game.get_keyboard(1, max_border), text
 
     def more(self):
         """
@@ -214,7 +232,7 @@ class Game(object):
         :return:
         """
         if self.last_shown_tournament == len(self.tournaments_list):
-            return "Больше нет"
+            return [], "Больше нет"
         else:
             text = ''
             max_border = min(self.last_shown_tournament + 10,
@@ -226,8 +244,10 @@ class Game(object):
                     str(index + self.last_shown_tournament + 1),
                     tournament['title'],
                     tournament.get('date', ''))
+            keyboard = Game.get_keyboard(self.last_shown_tournament + 1,
+                                         max_border)
             self.last_shown_tournament = max_border
-            return text
+            return keyboard, text
 
     def play(self, tournament_id):
         """
