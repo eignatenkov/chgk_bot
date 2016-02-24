@@ -184,13 +184,13 @@ class Game(object):
 
     def get_recent(self):
         """
-        :return: loads list of recent tournaments to self.tournaments_list;
-        posts list of first 10 tournaments to the chat
+        loads list of recent tournaments to self.tournaments_list
+        :return: раскладка клавиатуры, текст сообщения со списком турниров
         """
         self.tournaments_list = recent_tournaments()
         if len(self.tournaments_list) == 0:
-            return 'сайт db.chgk.info не возвращает список турниров. ' \
-                   'Попробуйте позже'
+            return [], 'сайт db.chgk.info не возвращает список турниров. ' \
+                       'Попробуйте позже'
         text = ''
         for index, tournament in enumerate(self.tournaments_list[:10]):
             text += str(index+1) + '. ' + tournament['title'] + '\n'
@@ -202,8 +202,7 @@ class Game(object):
         Поиск турниров в базе по переданной текстовой строке
         :param search_line: поисковая строка
         :param tour_db: словарь со списком всех турниров
-        :return: заполняет tournaments_list, возвращает список первых десяти
-        найденных турниров (или всех, если всего найдено меньше, чем десять)
+        :return: раскладка клавиатуры, текст сообщения со списком турниров
         """
         result = []
         url_template = 'http://db.chgk.info/tour/{}'
@@ -214,7 +213,7 @@ class Game(object):
                                'title': tour_info['title']})
         self.tournaments_list = sorted(result, key=itemgetter('date'))
         if len(self.tournaments_list) == 0:
-            return "Ничего не найдено"
+            return [], "Ничего не найдено"
         else:
             text = ''
             max_border = min(10, len(self.tournaments_list))
