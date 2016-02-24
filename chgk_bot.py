@@ -133,8 +133,12 @@ def play(bot, update, args, **kwargs):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     try:
-        bot.sendMessage(chat_id, all_games[chat_id].play(tournament_id))
-        bot.sendMessage(chat_id, "/ask - задать первый вопрос")
+        custom_keyboard = [['/ask']]
+        reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                           resize_keyboard=True)
+        bot.sendMessage(chat_id, all_games[chat_id].play(tournament_id),
+                        reply_markup=reply_markup)
+
     except TypeError:
         bot.sendMessage(chat_id, "Загрузите список турниров с помощью /recent")
     except TournamentError:
@@ -214,7 +218,8 @@ def ask(bot, update, args, **kwargs):
                 bot.sendMessage(chat_id, question.full_answer,
                                 parse_mode=ParseMode.MARKDOWN,
                                 reply_markup=reply_markup)
-                # bot.sendMessage(chat_id, all_games[chat_id].hint)
+                if all_games[chat_id].hint:
+                    bot.sendMessage(chat_id, all_games[chat_id].hint)
         job_queue.put(read_question, 10, repeat=False)
         job_queue.put(ten_seconds, 50, repeat=False)
         job_queue.put(time_is_up, 60, repeat=False)
@@ -239,9 +244,14 @@ def answer(bot, update, **kwargs):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     if all_games[chat_id].current_answer:
+        custom_keyboard = [['/ask']]
+        reply_markup = ReplyKeyboardMarkup(custom_keyboard,
+                                           resize_keyboard=True)
         bot.sendMessage(chat_id, all_games[chat_id].current_answer,
-                        parse_mode=ParseMode.MARKDOWN)
-        bot.sendMessage(chat_id, all_games[chat_id].hint)
+                        parse_mode=ParseMode.MARKDOWN,
+                        reply_markup=reply_markup)
+        if all_games[chat_id].hint:
+            bot.sendMessage(chat_id, all_games[chat_id].hint)
         all_games[chat_id].state = None
     else:
         bot.sendMessage(chat_id, "Не был задан вопрос")

@@ -259,21 +259,21 @@ class Game(object):
             question = next(self.current_tournament)
             self.state = question.id
             self.current_answer = question.full_answer
-            self.hint = 'Следующий вопрос - /ask'
+            self.hint = ''
             preface = ''
             if self.state[2] == self.current_tournament.number_of_questions[
                     self.state[1]-1]:
                 if self.state[1] == self.current_tournament.number_of_tours:
                     self.hint = 'Конец турнира'
                 else:
-                    self.hint = 'Конец тура. ' + self.hint
+                    self.hint = 'Конец тура'
             if self.state[2] == 1:
                 tour_number = self.state[1]-1
                 tour_titles = self.current_tournament.tour_titles
                 preface = tour_titles[tour_number]
                 if self.current_tournament.tour_editors[tour_number]:
                     preface += '\nРедакторы: ' + \
-                    self.current_tournament.tour_editors[tour_number]
+                        self.current_tournament.tour_editors[tour_number]
                 if self.current_tournament.tour_info[tour_number]:
                     preface += '\n' + \
                                self.current_tournament.tour_info[tour_number]
