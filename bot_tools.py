@@ -211,10 +211,10 @@ class Game(object):
                 result.append({'link': url_template.format(tour_id),
                                'date': tour_info['date'],
                                'title': tour_info['title']})
-        self.tournaments_list = sorted(result, key=itemgetter('date'))
-        if len(self.tournaments_list) == 0:
+        if len(result) == 0:
             return [], "Ничего не найдено"
         else:
+            self.tournaments_list = sorted(result, key=itemgetter('date'))
             text = ''
             max_border = min(10, len(self.tournaments_list))
             more_tournaments = self.tournaments_list[:max_border]
