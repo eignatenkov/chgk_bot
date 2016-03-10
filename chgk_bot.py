@@ -3,6 +3,7 @@ Bot you can play with
 """
 import logging
 from time import sleep
+from datetime import datetime
 import json
 from telegram import Updater, ParseMode, ReplyKeyboardMarkup, TelegramError
 from bot_tools import Game, NextTourError, TournamentError
@@ -368,6 +369,30 @@ def main():
                 all_games[int(chat_id)] = Game(**game)
     except FileNotFoundError:
         pass
+
+    def update_tour_db(bot):
+        """
+        Регулярное обновление списка турниров
+        :param bot: фиктивный параметр для того, чтобы можно было использовать
+        очередь пакета telegram
+        :return:
+        """
+
+        d = datetime.today()
+        if d.timetuple()[3] > 5:
+            job_queue.put(update_tour_db, 60*60*(25-d.timetuple()[3]),
+                          repeat=False)
+            logger.info("рано обновлять базу турниров, ставим в ожидание")
+        else:
+            job_queue.put(update_tour_db, 60*60*24, repeat=False)
+            logger.info("Начинаем обновлять базу турниров")
+            global tour_db
+            tour_db = export_tournaments()
+            logger.info("База турниров успешно обновлена")
+            with open('tour_db.json', 'w') as f:
+                json.dump(tour_db, f)
+
+    update_tour_db(updater.bot)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
