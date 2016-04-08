@@ -5,7 +5,8 @@ import logging
 from time import sleep
 from datetime import datetime
 import json
-from telegram import Updater, ParseMode, ReplyKeyboardMarkup, TelegramError
+from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
+from telegram.ext import Updater
 from bot_tools import Game, NextTourError, TournamentError
 from xml_tools import export_tournaments
 
