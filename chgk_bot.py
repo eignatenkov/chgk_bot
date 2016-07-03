@@ -6,14 +6,13 @@ from time import sleep
 from datetime import datetime
 import json
 from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
-from telegram.ext import Updater
+from telegram.ext import Updater, CommandHandler, MessageHandler
 from bot_tools import Game, NextTourError, TournamentError
 from xml_tools import export_tournaments
 
 # Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 logger = logging.getLogger(__name__)
 job_queue = None
@@ -25,7 +24,7 @@ def update_state(func):
     """
     декоратор для сохранения состояния игры в файл
     """
-    def wrapper(*pargs, **kwargs):
+    def wrapper(*args, **kwargs):
         """
         подмена декорируемой функции
         :param pargs: формат передаваемых параметров в соответствии с
@@ -34,7 +33,7 @@ def update_state(func):
         документацией по python-telegram-bot
         :return:
         """
-        result = func(*pargs, **kwargs)
+        result = func(*args, **kwargs)
         state = {}
         for key, value in all_games.items():
             state[key] = value.export()
@@ -45,7 +44,7 @@ def update_state(func):
 
 
 @update_state
-def start(bot, update, **kwargs):
+def start(bot, update):
     """
     Запуск бота в чате
     :param bot:
@@ -70,7 +69,7 @@ def start(bot, update, **kwargs):
 
 
 @update_state
-def recent(bot, update, **kwargs):
+def recent(bot, update):
     """
     Получить список последних загруженных турниров
     :param bot:
@@ -86,7 +85,7 @@ def recent(bot, update, **kwargs):
 
 
 @update_state
-def more(bot, update, **kwargs):
+def more(bot, update):
     """
     Показать еще десять загруженных турниров
     :param bot:
@@ -105,7 +104,7 @@ def more(bot, update, **kwargs):
 
 
 @update_state
-def search(bot, update, args, **kwargs):
+def search(bot, update, args):
     """
     Поиск турниров по переданной после команды /search текстовой строке
     :param bot:
@@ -124,7 +123,7 @@ def search(bot, update, args, **kwargs):
 
 
 @update_state
-def play(bot, update, args, **kwargs):
+def play(bot, update, args):
     """
     Играть турнир с заданным номером
     :param bot:
@@ -160,7 +159,7 @@ def play(bot, update, args, **kwargs):
 
 
 @update_state
-def ask(bot, update, args, **kwargs):
+def ask(bot, update, args):
     """
     обработка команды /ask - задание очередного вопроса
     :param bot:
@@ -194,6 +193,7 @@ def ask(bot, update, args, **kwargs):
         current_state = all_games[chat_id].state
         if preface:
             bot.sendMessage(chat_id, preface)
+        logger.info("Задаем вопрос {}".format(question.question_number))
         bot.sendMessage(chat_id, 'Вопрос {}'.format(question.question_number))
         sleep(1)
         if question.question_image:
@@ -246,7 +246,7 @@ def ask(bot, update, args, **kwargs):
 
 
 @update_state
-def answer(bot, update, **kwargs):
+def answer(bot, update):
     """
     Обработка команды /answer - досрочная печать ответа
     """
@@ -269,7 +269,7 @@ def answer(bot, update, **kwargs):
 
 
 @update_state
-def next_tour(bot, update, **kwargs):
+def next_tour(bot, update):
     """
     Обработка команды /next_tour - переход к следующему туру
     """
@@ -398,23 +398,23 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    dp.addTelegramCommandHandler("start", start)
-    dp.addTelegramCommandHandler("help", bot_help)
-    dp.addTelegramCommandHandler("recent", recent)
-    dp.addTelegramCommandHandler("more", more)
-    dp.addTelegramCommandHandler("play", play)
-    dp.addTelegramCommandHandler("ask", ask)
-    dp.addTelegramCommandHandler("answer", answer)
-    dp.addTelegramCommandHandler("next_tour", next_tour)
-    dp.addTelegramCommandHandler("search", search)
-    dp.addTelegramCommandHandler("broadcast", broadcast)
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("help", bot_help))
+    dp.add_handler(CommandHandler("recent", recent))
+    dp.add_handler(CommandHandler("more", more))
+    dp.add_handler(CommandHandler("play", play, pass_args=True))
+    dp.add_handler(CommandHandler("ask", ask, pass_args=True))
+    dp.add_handler(CommandHandler("answer", answer))
+    dp.add_handler(CommandHandler("next_tour", next_tour))
+    dp.add_handler(CommandHandler("search", search, pass_args=True))
+    dp.add_handler(CommandHandler("broadcast", broadcast))
 
-    dp.addUnknownTelegramCommandHandler(unknown_command)
-    dp.addTelegramRegexHandler('.*', any_message)
-    dp.addErrorHandler(bot_error)
+    # dp.addUnknownTelegramCommandHandler(unknown_command)
+    dp.add_handler(MessageHandler([], any_message))
+    dp.add_error_handler(bot_error)
 
     # Start the Bot
-    updater.start_polling(poll_interval=0.1, timeout=120)
+    updater.start_polling()
     updater.idle()
 
 
