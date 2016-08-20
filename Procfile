@@ -1,1 +1,1 @@
-python chgk_bot.py
+python: python chgk_bot.py
