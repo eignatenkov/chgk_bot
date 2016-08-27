@@ -11,13 +11,15 @@ def neat(text):
     """
     texts of questions from db.chgk.info contain many unnecessary newline
     symbols. This function replaces such symbols with spaces and keeps only
-    those newline symbols that go in pairs.
+    those newline symbols that go in pairs. It also replaces [ with \[ to make
+    MARKDOWN parse mode work.
     :param text: input string
     :return: edited text
     """
     text = text.replace('\n\n', '_zzz_')
     text = text.replace('\n', ' ')
     text = text.replace('_zzz_', '\n\n')
+    text = text.replace('[', '\[')
     return text
 
 
