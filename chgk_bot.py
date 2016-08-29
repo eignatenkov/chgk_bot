@@ -366,6 +366,11 @@ def main():
     try:
         with open('chgk_db.json') as f:
             state = json.load(f)
+            # import boto3
+            # session = boto3.Session(profile_name='personal') -- http://boto3.readthedocs.io/en/latest/reference/core/session.html
+            # resource = session.resource('s3')
+            # object = resource.Object('chgk-bot', 'chgk_db.json')
+            # state = json.loads(object.get()['Body'].read().decode('utf-8'))
             for chat_id, game in state.items():
                 all_games[int(chat_id)] = Game(**game)
     except FileNotFoundError:
