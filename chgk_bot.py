@@ -2,9 +2,12 @@
 Bot you can play with
 """
 import logging
+import argparse
 from time import sleep
 from datetime import datetime
 import json
+import boto3
+from botocore.client import ClientError
 from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
 from telegram.ext import Updater, CommandHandler, MessageHandler
 from bot_tools import Game, NextTourError, TournamentError
@@ -17,6 +20,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 job_queue = None
 tour_db = None
+s3_resource = None
 all_games = {}
 
 
@@ -39,6 +43,8 @@ def update_state(func):
             state[key] = value.export()
         with open('chgk_db.json', 'w') as chgk_db:
             json.dump(state, chgk_db)
+        s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
+                                                   'chgk_db.json')
         return result
     return wrapper
 
@@ -348,33 +354,46 @@ def main():
     считывание состояния игр, запуск бота
     :return:
     """
-    global job_queue, tour_db
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    global job_queue, tour_db, s3_resource
+    # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("aws_access_key_id")
+    parser.add_argument("aws_secret_key")
+    args = parser.parse_args()
+
+    print(args)
+
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
+    s3_resource = boto3.Session(aws_access_key_id=args.aws_access_key_id,
+                                aws_secret_access_key=args.aws_secret_key).resource('s3')
+    s3_tour_db = s3_resource.Object('chgk-bot', 'tour_db.json')
+    s3_chgk_db = s3_resource.Object('chgk-bot', 'chgk_db.json')
 
+    logger.info('Загружаем базу турниров')
     try:
-        with open('tour_db.json') as f:
-            tour_db = json.load(f)
-    except FileNotFoundError:
+        # with open('tour_db.json') as f:
+        tour_db = json.loads(s3_tour_db.get()['Body'].read().decode('utf-8'))
+        logger.info('База турниров загружена из s3')
+    except ClientError:
+        logger.warn('В s3 пусто, выгружаем турниры из базы')
         tour_db = export_tournaments()
+        logger.info('Турниры выгружены из базы')
         with open('tour_db.json', 'w') as f:
             json.dump(tour_db, f)
+        s3_tour_db.upload_file('tour_db.json')
+        logger.info('Турниры загружены в s3')
 
+    logger.info('Загружаем состояния игр из s3')
     try:
-        with open('chgk_db.json') as f:
-            state = json.load(f)
-            # import boto3
-            # session = boto3.Session(profile_name='personal') -- http://boto3.readthedocs.io/en/latest/reference/core/session.html
-            # resource = session.resource('s3')
-            # object = resource.Object('chgk-bot', 'chgk_db.json')
-            # state = json.loads(object.get()['Body'].read().decode('utf-8'))
-            for chat_id, game in state.items():
-                all_games[int(chat_id)] = Game(**game)
-    except FileNotFoundError:
-        pass
+        state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
+        for chat_id, game in state.items():
+            all_games[int(chat_id)] = Game(**game)
+        logger.info('Состояния игр успешно загружены')
+    except ClientError:
+        logger.info('Состояния игр не найдены, играем с нуля')
 
     def update_tour_db(bot):
         """
@@ -397,8 +416,11 @@ def main():
             logger.info("База турниров успешно обновлена")
             with open('tour_db.json', 'w') as f:
                 json.dump(tour_db, f)
+            s3_tour_db.upload_file('tour_db.json')
 
     update_tour_db(updater.bot)
+
+    logger.info('Поехали')
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
