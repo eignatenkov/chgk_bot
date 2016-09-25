@@ -38,13 +38,13 @@ def update_state(func):
         :return:
         """
         result = func(*args, **kwargs)
-        state = {}
-        for key, value in all_games.items():
-            state[key] = value.export()
-        with open('chgk_db.json', 'w') as chgk_db:
-            json.dump(state, chgk_db)
-        s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
-                                                   'chgk_db.json')
+        # state = {}
+        # for key, value in all_games.items():
+        #     state[key] = value.export()
+        # with open('chgk_db.json', 'w') as chgk_db:
+        #     json.dump(state, chgk_db)
+        # s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
+        #                                            'chgk_db.json')
         return result
     return wrapper
 
@@ -355,9 +355,10 @@ def main():
     :return:
     """
     global job_queue, tour_db, s3_resource
-    # token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
+    game_state = {}
+    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
-    token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
     parser = argparse.ArgumentParser()
     parser.add_argument("aws_access_key_id")
     parser.add_argument("aws_secret_key")
@@ -388,8 +389,8 @@ def main():
 
     logger.info('Загружаем состояния игр из s3')
     try:
-        state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
-        for chat_id, game in state.items():
+        game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
+        for chat_id, game in game_state.items():
             all_games[int(chat_id)] = Game(**game)
         logger.info('Состояния игр успешно загружены')
     except ClientError:
@@ -419,6 +420,22 @@ def main():
             s3_tour_db.upload_file('tour_db.json')
 
     update_tour_db(updater.bot)
+
+    def save_state(bot):
+        job_queue.put(save_state, 60*5, repeat=False)
+        nonlocal game_state
+        state = {}
+        for key, value in all_games.items():
+            state[key] = value.export()
+        if game_state != state:
+            logger.info("Сохраняем состояние игр в s3")
+            game_state = state
+            with open('chgk_db.json', 'w') as chgk_db:
+                json.dump(state, chgk_db)
+            s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
+                                                       'chgk_db.json')
+
+    save_state(updater.bot)
 
     logger.info('Поехали')
 
