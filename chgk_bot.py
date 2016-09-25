@@ -7,6 +7,7 @@ from time import sleep
 from datetime import datetime
 import json
 import boto3
+import os
 from botocore.client import ClientError
 from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
 from telegram.ext import Updater, CommandHandler, MessageHandler
@@ -359,17 +360,22 @@ def main():
     token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
     # token for the test bot
     # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
-    parser = argparse.ArgumentParser()
-    parser.add_argument("aws_access_key_id")
-    parser.add_argument("aws_secret_key")
-    args = parser.parse_args()
 
-    print(args)
+    try:
+        s3_key = os.environ['AWS_ACCESS_KEY_ID']
+        s3_secret = os.environ['AWS_SECRET_ACCESS_KEY']
+    except:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("aws_access_key_id")
+        parser.add_argument("aws_secret_key")
+        args = parser.parse_args()
+        s3_key = args.aws_access_key_id
+        s3_secret = args.aws_secret_key
 
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
-    s3_resource = boto3.Session(aws_access_key_id=args.aws_access_key_id,
-                                aws_secret_access_key=args.aws_secret_key).resource('s3')
+    s3_resource = boto3.Session(aws_access_key_id=s3_key,
+                                aws_secret_access_key=s3_secret).resource('s3')
     s3_tour_db = s3_resource.Object('chgk-bot', 'tour_db.json')
     s3_chgk_db = s3_resource.Object('chgk-bot', 'chgk_db.json')
 
