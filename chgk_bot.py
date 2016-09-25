@@ -264,6 +264,7 @@ def answer(bot, update):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     if all_games[chat_id].current_answer:
+        logger.info("Чат {0}, шлем ответ".format(chat_id))
         custom_keyboard = [['/ask']]
         reply_markup = ReplyKeyboardMarkup(custom_keyboard,
                                            resize_keyboard=True)
