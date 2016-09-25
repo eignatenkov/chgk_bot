@@ -200,7 +200,8 @@ def ask(bot, update, args):
         current_state = all_games[chat_id].state
         if preface:
             bot.sendMessage(chat_id, preface)
-        logger.info("Задаем вопрос {}".format(question.question_number))
+        logger.info("Чат {0}, задаем вопрос {1}".format(
+            chat_id, question.question_number))
         bot.sendMessage(chat_id, 'Вопрос {}'.format(question.question_number))
         sleep(1)
         if question.question_image:
@@ -235,6 +236,7 @@ def ask(bot, update, args):
                 bot.sendMessage(chat_id, question.full_answer,
                                 parse_mode=ParseMode.MARKDOWN,
                                 reply_markup=reply_markup)
+                logger.info("Чат {0}, шлем ответ".format(chat_id))
                 if all_games[chat_id].hint:
                     bot.sendMessage(chat_id, all_games[chat_id].hint)
         job_queue.put(read_question, 10, repeat=False)
@@ -243,6 +245,7 @@ def ask(bot, update, args):
         job_queue.put(post_answer, 70, repeat=False)
     except AttributeError:
         logger.warning("Ошибка Attribute Error")
+        bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
     except TypeError:
         logger.warning("Не выбран турнир")
         bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
