@@ -142,6 +142,7 @@ def export_tournaments():
             if tour.Type.text == 'Ч':
                 tournaments[tour.TextId.text] = {'title': tour.Title.text,
                                                  'date': tour.PlayedAt.text}
+                print('Added {}'.format(tour.Title.text))
             elif tour.Type.text == 'Г':
                 parse_dir(tour.TextId.text)
 
