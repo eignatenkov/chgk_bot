@@ -419,13 +419,15 @@ def main():
     updater.idle()
 
     # Dump current state when receive SIGTERM or SIGINT
-    state = {}
-    for key, value in all_games.items():
-        state[key] = value.export()
-    logger.info("Сохраняем состояние игр в s3")
-    with open('chgk_db.json', 'w') as chgk_db:
-        json.dump(state, chgk_db)
-    s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json', 'chgk_db.json')
+    if not args.test:
+        state = {}
+        for key, value in all_games.items():
+            state[key] = value.export()
+        logger.info("Сохраняем состояние игр в s3")
+        with open('chgk_db.json', 'w') as chgk_db:
+            json.dump(state, chgk_db)
+        s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
+                                                   'chgk_db.json')
 
 
 if __name__ == '__main__':
