@@ -2,9 +2,13 @@
 Bot you can play with
 """
 import logging
+import argparse
 from time import sleep
 from datetime import datetime
 import json
+import boto3
+import os
+from botocore.client import ClientError
 from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
 from telegram.ext import Updater, CommandHandler, MessageHandler
 from bot_tools import Game, NextTourError, TournamentError
@@ -17,33 +21,10 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 job_queue = None
 tour_db = None
+s3_resource = None
 all_games = {}
 
 
-def update_state(func):
-    """
-    декоратор для сохранения состояния игры в файл
-    """
-    def wrapper(*args, **kwargs):
-        """
-        подмена декорируемой функции
-        :param pargs: формат передаваемых параметров в соответствии с
-        документацией по python-telegram-bot
-        :param kwargs: формат передаваемых параметров в соответствии с
-        документацией по python-telegram-bot
-        :return:
-        """
-        result = func(*args, **kwargs)
-        state = {}
-        for key, value in all_games.items():
-            state[key] = value.export()
-        with open('chgk_db.json', 'w') as chgk_db:
-            json.dump(state, chgk_db)
-        return result
-    return wrapper
-
-
-@update_state
 def start(bot, update):
     """
     Запуск бота в чате
@@ -68,7 +49,6 @@ def start(bot, update):
     bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
-@update_state
 def recent(bot, update):
     """
     Получить список последних загруженных турниров
@@ -84,7 +64,6 @@ def recent(bot, update):
     bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
-@update_state
 def more(bot, update):
     """
     Показать еще десять загруженных турниров
@@ -103,7 +82,6 @@ def more(bot, update):
         bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
 
 
-@update_state
 def search(bot, update, args):
     """
     Поиск турниров по переданной после команды /search текстовой строке
@@ -122,7 +100,6 @@ def search(bot, update, args):
     bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
-@update_state
 def play(bot, update, args):
     """
     Играть турнир с заданным номером
@@ -158,7 +135,6 @@ def play(bot, update, args):
                                  "другой турнир")
 
 
-@update_state
 def ask(bot, update, args):
     """
     обработка команды /ask - задание очередного вопроса
@@ -193,7 +169,8 @@ def ask(bot, update, args):
         current_state = all_games[chat_id].state
         if preface:
             bot.sendMessage(chat_id, preface)
-        logger.info("Задаем вопрос {}".format(question.question_number))
+        logger.info("Чат {0}, задаем вопрос {1}".format(
+            chat_id, question.question_number))
         bot.sendMessage(chat_id, 'Вопрос {}'.format(question.question_number))
         sleep(1)
         if question.question_image:
@@ -228,6 +205,7 @@ def ask(bot, update, args):
                 bot.sendMessage(chat_id, question.full_answer,
                                 parse_mode=ParseMode.MARKDOWN,
                                 reply_markup=reply_markup)
+                logger.info("Чат {0}, шлем ответ".format(chat_id))
                 if all_games[chat_id].hint:
                     bot.sendMessage(chat_id, all_games[chat_id].hint)
         job_queue.put(read_question, 10, repeat=False)
@@ -236,6 +214,7 @@ def ask(bot, update, args):
         job_queue.put(post_answer, 70, repeat=False)
     except AttributeError:
         logger.warning("Ошибка Attribute Error")
+        bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
     except TypeError:
         logger.warning("Не выбран турнир")
         bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
@@ -245,7 +224,6 @@ def ask(bot, update, args):
                                  "Выберите турнир - /play [номер турнира]")
 
 
-@update_state
 def answer(bot, update):
     """
     Обработка команды /answer - досрочная печать ответа
@@ -254,6 +232,7 @@ def answer(bot, update):
     if chat_id not in all_games:
         all_games[chat_id] = Game()
     if all_games[chat_id].current_answer:
+        logger.info("Чат {0}, шлем ответ".format(chat_id))
         custom_keyboard = [['/ask']]
         reply_markup = ReplyKeyboardMarkup(custom_keyboard,
                                            resize_keyboard=True)
@@ -268,7 +247,6 @@ def answer(bot, update):
         return
 
 
-@update_state
 def next_tour(bot, update):
     """
     Обработка команды /next_tour - переход к следующему туру
@@ -348,33 +326,48 @@ def main():
     считывание состояния игр, запуск бота
     :return:
     """
-    global job_queue, tour_db
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
-    # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
+    global job_queue, tour_db, s3_resource
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-test', action='store_true')
+    args = parser.parse_args()
+    if args.test:
+        token = os.environ['TEST_TOKEN']
+    else:
+        token = os.environ['TOKEN']
+
+    s3_key = os.environ['AWS_ACCESS_KEY_ID']
+    s3_secret = os.environ['AWS_SECRET_ACCESS_KEY']
+
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
+    s3_resource = boto3.Session(aws_access_key_id=s3_key,
+                                aws_secret_access_key=s3_secret).resource('s3')
+    s3_tour_db = s3_resource.Object('chgk-bot', 'tour_db.json')
+    s3_chgk_db = s3_resource.Object('chgk-bot', 'chgk_db.json')
 
+    logger.info('Загружаем базу турниров')
     try:
-        with open('tour_db.json') as f:
-            tour_db = json.load(f)
-    except FileNotFoundError:
+        # with open('tour_db.json') as f:
+        tour_db = json.loads(s3_tour_db.get()['Body'].read().decode('utf-8'))
+        logger.info('База турниров загружена из s3')
+    except ClientError:
+        logger.warn('В s3 пусто, выгружаем турниры из базы')
         tour_db = export_tournaments()
+        logger.info('Турниры выгружены из базы')
         with open('tour_db.json', 'w') as f:
             json.dump(tour_db, f)
+        s3_tour_db.upload_file('tour_db.json')
+        logger.info('Турниры загружены в s3')
 
+    logger.info('Загружаем состояния игр из s3')
     try:
-        with open('chgk_db.json') as f:
-            state = json.load(f)
-            # import boto3
-            # session = boto3.Session(profile_name='personal') -- http://boto3.readthedocs.io/en/latest/reference/core/session.html
-            # resource = session.resource('s3')
-            # object = resource.Object('chgk-bot', 'chgk_db.json')
-            # state = json.loads(object.get()['Body'].read().decode('utf-8'))
-            for chat_id, game in state.items():
-                all_games[int(chat_id)] = Game(**game)
-    except FileNotFoundError:
-        pass
+        game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
+        for chat_id, game in game_state.items():
+            all_games[int(chat_id)] = Game(**game)
+        logger.info('Состояния игр успешно загружены')
+    except ClientError:
+        logger.info('Состояния игр не найдены, играем с нуля')
 
     def update_tour_db(bot):
         """
@@ -397,8 +390,11 @@ def main():
             logger.info("База турниров успешно обновлена")
             with open('tour_db.json', 'w') as f:
                 json.dump(tour_db, f)
+            s3_tour_db.upload_file('tour_db.json')
 
     update_tour_db(updater.bot)
+
+    logger.info('Поехали')
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -421,6 +417,15 @@ def main():
     # Start the Bot
     updater.start_polling()
     updater.idle()
+
+    # Dump current state when receive SIGTERM or SIGINT
+    state = {}
+    for key, value in all_games.items():
+        state[key] = value.export()
+    logger.info("Сохраняем состояние игр в s3")
+    with open('chgk_db.json', 'w') as chgk_db:
+        json.dump(state, chgk_db)
+    s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json', 'chgk_db.json')
 
 
 if __name__ == '__main__':
