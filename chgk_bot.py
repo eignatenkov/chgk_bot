@@ -25,32 +25,6 @@ s3_resource = None
 all_games = {}
 
 
-def update_state(func):
-    """
-    декоратор для сохранения состояния игры в файл
-    """
-    def wrapper(*args, **kwargs):
-        """
-        подмена декорируемой функции
-        :param pargs: формат передаваемых параметров в соответствии с
-        документацией по python-telegram-bot
-        :param kwargs: формат передаваемых параметров в соответствии с
-        документацией по python-telegram-bot
-        :return:
-        """
-        result = func(*args, **kwargs)
-        # state = {}
-        # for key, value in all_games.items():
-        #     state[key] = value.export()
-        # with open('chgk_db.json', 'w') as chgk_db:
-        #     json.dump(state, chgk_db)
-        # s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
-        #                                            'chgk_db.json')
-        return result
-    return wrapper
-
-
-@update_state
 def start(bot, update):
     """
     Запуск бота в чате
@@ -75,7 +49,6 @@ def start(bot, update):
     bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
-@update_state
 def recent(bot, update):
     """
     Получить список последних загруженных турниров
@@ -91,7 +64,6 @@ def recent(bot, update):
     bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
-@update_state
 def more(bot, update):
     """
     Показать еще десять загруженных турниров
@@ -110,7 +82,6 @@ def more(bot, update):
         bot.sendMessage(chat_id, "Не загружено ни одного турнира. /recent")
 
 
-@update_state
 def search(bot, update, args):
     """
     Поиск турниров по переданной после команды /search текстовой строке
@@ -129,7 +100,6 @@ def search(bot, update, args):
     bot.sendMessage(chat_id, text, reply_markup=reply_markup)
 
 
-@update_state
 def play(bot, update, args):
     """
     Играть турнир с заданным номером
@@ -165,7 +135,6 @@ def play(bot, update, args):
                                  "другой турнир")
 
 
-@update_state
 def ask(bot, update, args):
     """
     обработка команды /ask - задание очередного вопроса
@@ -255,7 +224,6 @@ def ask(bot, update, args):
                                  "Выберите турнир - /play [номер турнира]")
 
 
-@update_state
 def answer(bot, update):
     """
     Обработка команды /answer - досрочная печать ответа
@@ -279,7 +247,6 @@ def answer(bot, update):
         return
 
 
-@update_state
 def next_tour(bot, update):
     """
     Обработка команды /next_tour - переход к следующему туру
@@ -360,21 +327,17 @@ def main():
     :return:
     """
     global job_queue, tour_db, s3_resource
-    game_state = {}
-    token = '172154397:AAEeEbxveuvlfHL7A-zLBfV2HRrZkJTcsSc'
-    # token for the test bot
-    # token = '172047371:AAFv5NeZ1Bx9ea-bt2yJeK8ajZpgHPgkLBk'
 
-    try:
-        s3_key = os.environ['AWS_ACCESS_KEY_ID']
-        s3_secret = os.environ['AWS_SECRET_ACCESS_KEY']
-    except:
-        parser = argparse.ArgumentParser()
-        parser.add_argument("aws_access_key_id")
-        parser.add_argument("aws_secret_key")
-        args = parser.parse_args()
-        s3_key = args.aws_access_key_id
-        s3_secret = args.aws_secret_key
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-test', action='store_true')
+    args = parser.parse_args()
+    if args.test:
+        token = os.environ['TEST_TOKEN']
+    else:
+        token = os.environ['TOKEN']
+
+    s3_key = os.environ['AWS_ACCESS_KEY_ID']
+    s3_secret = os.environ['AWS_SECRET_ACCESS_KEY']
 
     updater = Updater(token, workers=100)
     job_queue = updater.job_queue
@@ -431,22 +394,6 @@ def main():
 
     update_tour_db(updater.bot)
 
-    def save_state(bot):
-        job_queue.put(save_state, 60*5, repeat=False)
-        nonlocal game_state
-        state = {}
-        for key, value in all_games.items():
-            state[key] = value.export()
-        if game_state != state:
-            logger.info("Сохраняем состояние игр в s3")
-            game_state = state
-            with open('chgk_db.json', 'w') as chgk_db:
-                json.dump(state, chgk_db)
-            s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
-                                                       'chgk_db.json')
-
-    save_state(updater.bot)
-
     logger.info('Поехали')
 
     # Get the dispatcher to register handlers
@@ -470,6 +417,15 @@ def main():
     # Start the Bot
     updater.start_polling()
     updater.idle()
+
+    # Dump current state when receive SIGTERM or SIGINT
+    state = {}
+    for key, value in all_games.items():
+        state[key] = value.export()
+    logger.info("Сохраняем состояние игр в s3")
+    with open('chgk_db.json', 'w') as chgk_db:
+        json.dump(state, chgk_db)
+    s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json', 'chgk_db.json')
 
 
 if __name__ == '__main__':
