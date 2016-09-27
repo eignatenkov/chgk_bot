@@ -66,9 +66,17 @@ def get_team_rating(team_id, release_id=None, last=False):
 
 
 def get_teams_by_town(town):
-    url = 'http://rating.chgk.info/api/teams.json/search?town={}'.format(town)
-    raw_result = api_call(url)
-    return {item['idteam']: item['name'] for item in raw_result['items']}
+    i = 1
+    result = dict()
+    while True:
+        url = 'http://rating.chgk.info/api/teams.json/search?town={0}&page={1}'.format(town, i)
+        raw_result = api_call(url)
+        result.update({item['idteam']: item['name'] for item in raw_result['items']})
+        if int(raw_result['total_items']) < int(raw_result['current_items'].split('-')[-1]):
+            break
+        else:
+            i += 1
+    return result
 
 
 def get_player_info(player_id):
@@ -111,23 +119,49 @@ def get_towns_by_country(country):
     )
     with urlopen(url) as towns:
         page = BeautifulSoup(towns, 'html.parser')
-    return [item.text.strip() for index, item in enumerate(
-        page.tbody.find_all('a')) if not index % 4]
+        all_info = page.tbody.find_all('a')
+    return [item.text.strip() for index, item in enumerate(all_info) if
+            not index % 4 and all_info[index+3].text.strip() != '-']
 
 
-def get_country_results_on_tournament(country, t_id):
+def get_country_results_on_tournament(country, t_id, country_teams=None):
+    if not country_teams:
+        country_teams = dict()
+        for town in get_towns_by_country(country):
+            country_teams.update(get_teams_by_town(town))
+    return get_teams_results_on_tournaments(country_teams, t_id)
+
+
+def get_country_results_on_weekend(country='Германия', sunday=None):
+    t_list = get_weekend_tournaments(sunday)
+    result = {}
+
     country_teams = dict()
     for town in get_towns_by_country(country):
         country_teams.update(get_teams_by_town(town))
-    return get_teams_results_on_tournaments(country_teams, t_id)
+
+    for tnmnt in t_list:
+        t_results = get_country_results_on_tournament(country, tnmnt['idtournament'], country_teams)
+        if len(t_results) > 0:
+            result[tnmnt['name']] = t_results
+
+    return result
 
 if __name__ == '__main__':
     # print(get_team_info(3166))
     # print(get_weekend_tournaments(datetime.date(2016,9,18)))
     # print(get_town_results_on_weekend('Берлин'))
-    # print(get_town_results_on_tournament('Берлин', 3719))
-    # print(get_teams_by_town('Берлин'))
-    for item in sorted(get_country_results_on_tournament('Германия', 3792),
-                       key=lambda x: float(x.get('position', 0))):
-        print(item)
-
+    # print(get_town_results_on_tournament('Москва', 3841))
+    # print(len(get_teams_by_town('Москва')))
+    # for item in sorted(get_country_results_on_tournament('Германия', 3866),
+    #                    key=lambda x: float(x.get('position', 0))):
+    #     print(item)
+    for key, value in get_country_results_on_weekend(country='Россия', sunday=datetime.date(2016,9,25)).items():
+        print(key)
+        print('Команда\tПозиция\tВзято\tБонус')
+        for item in sorted(value, key=lambda x: float(x.get('position', 0))):
+            print('{0}\t{1}\t{2}\t{3}'.format(item.get('name', '-'),
+                                              item.get('position', 0),
+                                              item.get('questions_total', 0),
+                                              item.get('bonus_b', 0)))
+        print('\n')
