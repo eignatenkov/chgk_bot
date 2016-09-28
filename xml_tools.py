@@ -74,14 +74,14 @@ def tournament_info(url):
     result['description'] = description
     result['n_tours'] = int(tournament.ChildrenNum.text)
     result['n_questions'] = [int(item.QuestionsNum.text) for item in
-                             tournament.find_all('tour')]
+                             tournament.find_all('tour')] if tournament.find_all('tour') else [int(tournament.QuestionsNum.text)]
     result['tour_titles'] = [item.Title.text for item in
-                             tournament.find_all('tour')]
+                             tournament.find_all('tour')] if tournament.find_all('tour') else [tournament.Title.text]
     result['tour_info'] = [neat(item.Info.text) if item.Info != tournament.Info
-                           else '' for item in tournament.find_all('tour')]
+                           else '' for item in tournament.find_all('tour')] if tournament.find_all('tour') else [tournament.Info.text]
     result['tour_editors'] = [item.Editors.text if
                               item.Editors != tournament.Editors else '' for
-                              item in tournament.find_all('tour')]
+                              item in tournament.find_all('tour')] if tournament.find_all('tour') else [tournament.Editors.text]
     return result
 
 
