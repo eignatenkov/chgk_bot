@@ -156,7 +156,7 @@ if __name__ == '__main__':
     # for item in sorted(get_country_results_on_tournament('Германия', 3866),
     #                    key=lambda x: float(x.get('position', 0))):
     #     print(item)
-    for key, value in get_country_results_on_weekend(country='Россия', sunday=datetime.date(2016,9,25)).items():
+    for key, value in get_country_results_on_weekend().items():
         print(key)
         print('Команда\tПозиция\tВзято\tБонус')
         for item in sorted(value, key=lambda x: float(x.get('position', 0))):
