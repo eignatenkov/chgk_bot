@@ -336,6 +336,7 @@ def current_results(bot, update):
                                                      item.get('bonus_b', 0))
         message += '\n'
     bot.sendMessage(chat_id, text=message, parse_mode=ParseMode.MARKDOWN)
+    logger.info('Результаты отправлены')
 
 
 def main():
