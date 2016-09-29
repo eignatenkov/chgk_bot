@@ -10,9 +10,10 @@ import boto3
 import os
 from botocore.client import ClientError
 from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
-from telegram.ext import Updater, CommandHandler, MessageHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from bot_tools import Game, NextTourError, TournamentError
 from xml_tools import export_tournaments
+from rating_tools import get_country_results_on_weekend
 
 # Enable logging
 logging.basicConfig(level=logging.INFO,
@@ -321,6 +322,22 @@ def broadcast(bot, update):
             all_games.pop(user)
 
 
+def current_results(bot, update):
+    chat_id = update.message.chat_id
+    message = ''
+    for key, value in get_country_results_on_weekend().items():
+        message += '*Турнир: {}*\n'.format(key)
+        message += 'Команда\tМесто\tВзято\tБонус\n'
+        message += '`------------------------`\n'
+        for item in sorted(value, key=lambda x: float(x.get('position', 0))):
+            message += '{0}\t{1}\t{2}\t*{3}*\n'.format(item.get('name', '-'),
+                                                     item.get('position', 0),
+                                                     item.get('questions_total', 0),
+                                                     item.get('bonus_b', 0))
+        message += '\n'
+    bot.sendMessage(chat_id, text=message, parse_mode=ParseMode.MARKDOWN)
+
+
 def main():
     """
     считывание состояния игр, запуск бота
@@ -410,7 +427,10 @@ def main():
     dp.add_handler(CommandHandler("search", search, pass_args=True))
     dp.add_handler(CommandHandler("broadcast", broadcast))
 
-    # dp.addUnknownTelegramCommandHandler(unknown_command)
+    # rating interface, just for fun
+    dp.add_handler(CommandHandler("results", current_results))
+
+    dp.add_handler(MessageHandler([Filters.command], unknown_command))
     dp.add_handler(MessageHandler([], any_message))
     dp.add_error_handler(bot_error)
 
@@ -428,6 +448,9 @@ def main():
             json.dump(state, chgk_db)
         s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
                                                    'chgk_db.json')
+
+    else:
+        logger.info("Выходим из тестового запуска, ничего не сохраняя")
 
 
 if __name__ == '__main__':
