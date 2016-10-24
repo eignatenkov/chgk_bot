@@ -351,6 +351,7 @@ def main():
     parser.add_argument('-test', action='store_true')
     args = parser.parse_args()
     if args.test:
+        logger.info('Запускаем отладочного бота')
         token = os.environ['TEST_TOKEN']
     else:
         token = os.environ['TOKEN']
@@ -395,26 +396,27 @@ def main():
             exists = True
         return exists
 
-    try:
-        while is_flag():
-            logger.info('Бот уже запущен, ждем закрытия')
-            sleep(2)
+    if not args.test:
+        try:
+            while is_flag():
+                logger.info('Бот уже запущен, ждем закрытия')
+                sleep(2)
 
-        logger.info('Ставим флаг')
+            logger.info('Ставим флаг')
 
-        with open("flag", 'w') as f:
-            json.dump({'flag': 1}, f)
-        flag.upload_file("flag")
+            with open("flag", 'w') as f:
+                json.dump({'flag': 1}, f)
+            flag.upload_file("flag")
 
-        logger.info('Флаг поставлен')
-        logger.info('Загружаем состояния игр')
+            logger.info('Флаг поставлен')
+            logger.info('Загружаем состояния игр')
 
-        game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
-        for chat_id, game in game_state.items():
-            all_games[int(chat_id)] = Game(**game)
-        logger.info('Состояния игр успешно загружены')
-    except ClientError:
-        logger.info('Состояния игр не найдены, играем с нуля')
+            game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
+            for chat_id, game in game_state.items():
+                all_games[int(chat_id)] = Game(**game)
+            logger.info('Состояния игр успешно загружены')
+        except ClientError:
+            logger.info('Состояния игр не найдены, играем с нуля')
 
     def update_tour_db(bot):
         """
