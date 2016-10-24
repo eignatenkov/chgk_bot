@@ -180,7 +180,8 @@ def ask(bot, update, args):
         reply_markup = ReplyKeyboardMarkup(custom_keyboard,
                                            resize_keyboard=True)
         bot.sendMessage(chat_id, question.question,
-                        reply_markup=reply_markup)
+                        reply_markup=reply_markup,
+                        parse_mode=ParseMode.MARKDOWN)
 
         def read_question(bot):
             """ функция для очереди, запуск минуты на обсуждение """
