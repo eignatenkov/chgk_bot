@@ -396,8 +396,8 @@ def main():
             exists = True
         return exists
 
-    if not args.test:
-        try:
+    try:
+        if not args.test:
             while is_flag():
                 logger.info('Бот уже запущен, ждем закрытия')
                 sleep(2)
@@ -409,14 +409,14 @@ def main():
             flag.upload_file("flag")
 
             logger.info('Флаг поставлен')
-            logger.info('Загружаем состояния игр')
+        logger.info('Загружаем состояния игр')
 
-            game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
-            for chat_id, game in game_state.items():
-                all_games[int(chat_id)] = Game(**game)
-            logger.info('Состояния игр успешно загружены')
-        except ClientError:
-            logger.info('Состояния игр не найдены, играем с нуля')
+        game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
+        for chat_id, game in game_state.items():
+            all_games[int(chat_id)] = Game(**game)
+        logger.info('Состояния игр успешно загружены')
+    except ClientError:
+        logger.info('Состояния игр не найдены, играем с нуля')
 
     def update_tour_db(bot):
         """
