@@ -274,7 +274,8 @@ def bot_help(bot, update):
            "/ask - задать очередной вопрос\n" \
            "/ask 2 4 - задать 4-й вопрос 2-го тура текущего турнира\n" \
            "/answer - увидеть ответ, не дожидаясь конца минуты\n" \
-           "/next_tour - следующий тур"
+           "/next_tour - следующий тур\n" \
+           "/state - состояние игры"
     bot.sendMessage(update.message.chat_id, text=text)
 
 
@@ -321,6 +322,24 @@ def broadcast(bot, update):
                     logger.info("Не отправлено, %s", e.message)
         for user in to_delete:
             all_games.pop(user)
+
+
+def get_state(bot, update):
+    """
+    Посмотреть текущий турнир, тур, вопрос
+    :param bot:
+    :param update:
+    :return: информация о текущем турнире, туре, вопросе
+    """
+    chat_id = update.message.chat_id
+    if chat_id not in all_games:
+        bot.sendMessage(chat_id, text='Сейчас вы не играете никакой турнир')
+    else:
+        cur_tour = all_games[chat_id].current_tournament
+        reply = "Последний сыгранный вопрос: {0}, тур {1}, вопрос {2}".format(
+            cur_tour.title, cur_tour.current_tour, cur_tour.current_question
+        )
+        bot.sendMessage(chat_id, text=reply)
 
 
 def current_results(bot, update):
@@ -458,6 +477,7 @@ def main():
     dp.add_handler(CommandHandler("next_tour", next_tour))
     dp.add_handler(CommandHandler("search", search, pass_args=True))
     dp.add_handler(CommandHandler("broadcast", broadcast))
+    dp.add_handler(CommandHandler("state", get_state))
 
     # rating interface, just for fun
     dp.add_handler(CommandHandler("results", current_results))
