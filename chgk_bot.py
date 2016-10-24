@@ -379,7 +379,35 @@ def main():
         logger.info('Турниры загружены в s3')
 
     logger.info('Загружаем состояния игр из s3')
+
+    flag = s3_resource.Object('chgk-bot', 'flag')
+
+    def is_flag():
+        try:
+            flag.load()
+        except ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                exists = False
+            else:
+                raise e
+        else:
+            exists = True
+        return exists
+
     try:
+        while is_flag():
+            logger.info('Бот уже запущен, ждем закрытия')
+            sleep(2)
+
+        logger.info('Ставим флаг')
+
+        with open("flag", 'w') as f:
+            json.dump({'flag': 1}, f)
+        flag.upload_file("flag")
+
+        logger.info('Флаг поставлен')
+        logger.info('Загружаем состояния игр')
+
         game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
         for chat_id, game in game_state.items():
             all_games[int(chat_id)] = Game(**game)
@@ -449,6 +477,10 @@ def main():
             json.dump(state, chgk_db)
         s3_resource.Bucket('chgk-bot').upload_file('chgk_db.json',
                                                    'chgk_db.json')
+        logger.info('Состояния игр сохранены')
+        logger.info('снимаем флаг')
+        flag.delete()
+        logger.info('Флаг снят')
 
     else:
         logger.info("Выходим из тестового запуска, ничего не сохраняя")
