@@ -1,4 +1,6 @@
 .idea/
+*.ipynb
+flag
 chgk_bot.log
 chgk_db.json
 tour_db.json
