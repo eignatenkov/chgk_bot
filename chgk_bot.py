@@ -210,10 +210,10 @@ def ask(bot, update, args):
                 logger.info("Чат {0}, шлем ответ".format(chat_id))
                 if all_games[chat_id].hint:
                     bot.sendMessage(chat_id, all_games[chat_id].hint)
-        job_queue.put(read_question, 10, repeat=False)
-        job_queue.put(ten_seconds, 50, repeat=False)
-        job_queue.put(time_is_up, 60, repeat=False)
-        job_queue.put(post_answer, 70, repeat=False)
+        job_queue.put(read_question, 20, repeat=False)
+        job_queue.put(ten_seconds, 70, repeat=False)
+        job_queue.put(time_is_up, 80, repeat=False)
+        job_queue.put(post_answer, 90, repeat=False)
     except AttributeError:
         logger.warning("Ошибка Attribute Error")
         bot.sendMessage(chat_id, "Выберите турнир - /play [номер турнира]")
