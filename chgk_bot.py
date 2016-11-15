@@ -417,9 +417,12 @@ def main():
 
     try:
         if not args.test:
-            while is_flag():
+            if is_flag():
                 logger.info('Бот уже запущен, ждем закрытия')
-                sleep(2)
+                sleep(10)
+                if is_flag():
+                    logger.info('Что-то пошло не так, удаляем флаг руками')
+                    flag.delete()
 
             logger.info('Ставим флаг')
 
