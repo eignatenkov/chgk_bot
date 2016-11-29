@@ -39,6 +39,7 @@ def get_weekend_tournaments(sunday=None):
         sunday = today - datetime.timedelta(days=today.weekday()+1)
 
     def is_tournament_on_weekend(tournament, sunday_date):
+        print(tournament)
         begin = dateutil.parser.parse(tournament['date_start']).date()
         end = dateutil.parser.parse(tournament['date_end']).date()
         return begin <= sunday_date and \
