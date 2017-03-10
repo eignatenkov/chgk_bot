@@ -1,6 +1,6 @@
 Бот, позволяющий отыгрывать пакеты из базы вопросов спортивного "Что? Где? Когда?"
 
-Аккаунт &mdash; [@telechgk_bot](http://telegram.me/telechgk)
+Аккаунт &mdash; [@telechgk_bot](http://telegram.me/telechgk_bot)
 
 * `/recent` &mdash; список последних десяти загруженных в базу пакетов
 * `/more` &mdash; следующие 10 турниров
