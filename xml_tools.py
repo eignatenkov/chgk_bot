@@ -5,6 +5,10 @@
 import json
 from urllib.request import urlopen, HTTPError
 from bs4 import BeautifulSoup
+import ssl
+
+# This restores the same behavior as before.
+CONTEXT = ssl._create_unverified_context()
 
 
 def neat(text):
@@ -41,7 +45,7 @@ def recent_tournaments():
     list of recent tournaments
     :return: list of recent tournaments
     """
-    recent_url = urlopen("http://db.chgk.info/last/feed")
+    recent_url = urlopen("http://db.chgk.info/last/feed", context=CONTEXT)
     soup = BeautifulSoup(recent_url, 'lxml-xml')
     tournaments = []
     for item in soup.find_all('item'):
@@ -59,7 +63,7 @@ def tournament_info(url):
     """
     url += '/xml'
     try:
-        tournament_url = urlopen(url)
+        tournament_url = urlopen(url, context=CONTEXT)
     except HTTPError:
         return ''
     tournament = BeautifulSoup(tournament_url, 'lxml-xml')
@@ -96,7 +100,7 @@ def q_and_a(tournament_url, tour, question):
     """
     url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(
         tournament_url.split('/')[-1], tour, question)
-    question_url = urlopen(url)
+    question_url = urlopen(url, context=CONTEXT)
     quest = BeautifulSoup(question_url, 'lxml-xml')
     question_url.close()
     result = dict()
@@ -133,10 +137,10 @@ def export_tournaments():
         :return: заполненный словарь tournaments
         """
         if title:
-            soup = BeautifulSoup(urlopen(url_template.format(title)),
+            soup = BeautifulSoup(urlopen(url_template.format(title), context=CONTEXT),
                                  'lxml-xml')
         else:
-            soup = BeautifulSoup(urlopen('http://db.chgk.info/tour/xml'),
+            soup = BeautifulSoup(urlopen('http://db.chgk.info/tour/xml', context=CONTEXT),
                                  'lxml-xml')
         for tour in soup.findAll('tour'):
             if tour.Type.text == 'Ч':
