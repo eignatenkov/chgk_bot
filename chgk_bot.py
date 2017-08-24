@@ -8,12 +8,17 @@ from datetime import datetime
 import json
 import boto3
 import os
+from urllib.request import urlopen
+import ssl
 from botocore.client import ClientError
 from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from bot_tools import Game, NextTourError, TournamentError
 from xml_tools import export_tournaments
 from rating_tools import get_country_results_on_weekend
+
+
+CONTEXT = ssl._create_unverified_context()
 
 # Enable logging
 logging.basicConfig(level=logging.INFO,
@@ -175,7 +180,8 @@ def ask(bot, update, args):
         bot.sendMessage(chat_id, 'Вопрос {}'.format(question.question_number))
         sleep(1)
         if question.question_image:
-            bot.sendPhoto(chat_id, question.question_image)
+            image = urlopen(question.question_image, context=CONTEXT)
+            bot.sendPhoto(chat_id, image)
         custom_keyboard = [['/ask', '/answer']]
         reply_markup = ReplyKeyboardMarkup(custom_keyboard,
                                            resize_keyboard=True)
