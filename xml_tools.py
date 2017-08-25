@@ -24,6 +24,7 @@ def neat(text):
     text = text.replace('\n', ' ')
     text = text.replace('_zzz_', '\n\n')
     text = text.replace('[', '\[')
+    text = text.replace('\xa0', '')
     return text
 
 

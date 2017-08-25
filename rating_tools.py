@@ -42,14 +42,12 @@ def get_weekend_tournaments(sunday=None):
         try:
             begin = dateutil.parser.parse(tournament['date_start']).date()
             end = dateutil.parser.parse(tournament['date_end']).date()
-            return begin <= sunday_date and \
-                   end >= sunday_date - datetime.timedelta(days=1) and \
-                   end <= sunday_date + datetime.timedelta(days=5)
+            return begin <= sunday_date and sunday_date - datetime.timedelta(days=1) <= end <= \
+                                            sunday_date + datetime.timedelta(days=5)
         except ValueError:
             return False
 
-    return [item for item in get_tournaments()['items'] if
-            is_tournament_on_weekend(item, sunday)]
+    return [i for i in get_tournaments()['items'] if is_tournament_on_weekend(i, sunday)]
 
 
 def get_team_info(team_id):
