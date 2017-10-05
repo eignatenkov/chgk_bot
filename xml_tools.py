@@ -91,6 +91,13 @@ def tournament_info(url):
     return result
 
 
+def get_bs_response(url):
+    raw_url = urlopen(url, context=CONTEXT)
+    bs_parsed = BeautifulSoup(raw_url, 'lxml-xml')
+    raw_url.close()
+    return bs_parsed
+
+
 def q_and_a(tournament_url, tour, question):
     """
     get all necessary info about the question: text, handouts (if present),
@@ -102,9 +109,7 @@ def q_and_a(tournament_url, tour, question):
     """
     url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(
         tournament_url.split('/')[-1], tour, question)
-    question_url = urlopen(url, context=CONTEXT)
-    quest = BeautifulSoup(question_url, 'lxml-xml')
-    question_url.close()
+    quest = get_bs_response(url)
     result = dict()
     result['question'] = neat(strip_tags(quest.Question))
     imageurl = BeautifulSoup(quest.Question.text, 'lxml').img
@@ -153,6 +158,7 @@ def export_tournaments():
 
     parse_dir()
     return tournaments
+
 
 if __name__ == "__main__":
     with open('tour_db.json', 'w') as f:
