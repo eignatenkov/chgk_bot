@@ -5,6 +5,13 @@ from weakref import WeakKeyDictionary
 from operator import itemgetter
 from xml_tools import q_and_a, tournament_info, recent_tournaments
 from constants import TRANSLATIONS
+import logging
+
+# Enable logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
 
 
 class XMLField(object):
@@ -156,6 +163,7 @@ class Game(object):
         self.state = None
         self.current_answer = kwargs.get('current_answer')
         self.hint = kwargs.get('hint', '')
+        logger.info('Загружаем турнир {}'.format(kwargs.get('current_tournament')))
         self.current_tournament = \
             Tournament(kwargs.get('current_tournament'))
         if self.current_tournament:

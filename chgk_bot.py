@@ -440,6 +440,8 @@ def main():
         logger.info('Загружаем состояния игр')
 
         game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
+
+        logger.info('Файл с состояниями игр прочитан')
         for chat_id, game in game_state.items():
             all_games[int(chat_id)] = Game(**game)
         logger.info('Состояния игр успешно загружены')
