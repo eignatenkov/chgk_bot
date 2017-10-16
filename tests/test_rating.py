@@ -35,11 +35,12 @@ class GetTournamentResultsByIdTestCase(unittest.TestCase):
             'questions_total': '27',
             'mask': '101111100111000101111001111111111111',
             'bonus_a': '2297',
+            'd_bonus_a': '2297',
             'bonus_b': '62',
             'tech_rating': '5771',
             'predicted_position': '3',
-            'real_bonus_b': '1487',
-            'd_bonus_b': '62',
+            'd_bonus_b': '1487',
+            'd_diff_bonus': '62',
             'included_in_rating': '1'}
         self.assertDictEqual(first_team, expected_first_team)
 

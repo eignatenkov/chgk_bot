@@ -361,6 +361,8 @@ def current_results(bot, update):
                                                      item.get('questions_total', 0),
                                                      item.get('bonus_b', 0))
         message += '\n'
+    if message == '':
+        message = 'Пока нет результатов'
     bot.sendMessage(chat_id, text=message, parse_mode=ParseMode.MARKDOWN)
     logger.info('Результаты отправлены')
 
