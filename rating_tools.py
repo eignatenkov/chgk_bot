@@ -1,8 +1,9 @@
 import requests
 from urllib.request import urlopen
 import json
+import math
 import datetime
-import dateutil.parser
+from dateutil.parser import parse as date_parse
 from bs4 import BeautifulSoup
 import codecs
 
@@ -28,26 +29,55 @@ def get_tournament_results_by_id(tournament_id):
     return api_call(url)
 
 
-def get_tournaments():
+def get_tournaments(page=None):
     url = 'http://rating.chgk.info/api/tournaments.json'
+    if page:
+        url += '/?page={}'.format(page)
     return api_call(url)
 
 
-def get_weekend_tournaments(sunday=None):
-    if not sunday:
-        today = datetime.date.today()
-        sunday = today - datetime.timedelta(days=today.weekday()+1)
-
-    def is_tournament_on_weekend(tournament, sunday_date):
+def get_tournaments_by_dates(date_start=None, date_end=None):
+    """
+    returns tournaments played between date_start and date_end. If both are None returns
+    tournaments played on previous weekend
+    :param date_start: start of the period, datetime.date. If none, equals Thursday of the previous
+    week
+    :param date_end: end of the period, datetime.date. If none, equals Wednesday of the previous
+    week
+    :return: list of tournaments
+    """
+    result = []
+    today = datetime.date.today()
+    last_sunday = today - datetime.timedelta(days=today.weekday()+1)
+    if date_start is None:
+        date_start = last_sunday - datetime.timedelta(days=3)
+    if date_end is None:
+        date_end = last_sunday + datetime.timedelta(days=3)
+    if date_start > date_end:
+        return []
+    tournaments_fp = get_tournaments()
+    n_tournaments = int(tournaments_fp['total_items'])
+    tournaments = tournaments_fp['items']
+    for i in range(1, math.ceil(n_tournaments / 1000) + 1):
+        tournaments.extend(get_tournaments(i)['items'])
+    for t in tournaments:
         try:
-            begin = dateutil.parser.parse(tournament['date_start']).date()
-            end = dateutil.parser.parse(tournament['date_end']).date()
-            return begin <= sunday_date and sunday_date - datetime.timedelta(days=1) <= end <= \
-                                            sunday_date + datetime.timedelta(days=5)
+            begin = date_parse(t['date_start']).date()
+            end = date_parse(t['date_end']).date()
         except ValueError:
-            return False
+            continue
+        if begin >= date_start and end <= date_end:
+            result.append(t)
+    return result
 
-    return [i for i in get_tournaments()['items'] if is_tournament_on_weekend(i, sunday)]
+
+def get_weekend_tournaments(sunday=None):
+    date_start = None
+    date_end = None
+    if sunday:
+        date_start = sunday - datetime.timedelta(days=3)
+        date_end = sunday + datetime.timedelta(days=3)
+    return get_tournaments_by_dates(date_start, date_end)
 
 
 def get_team_info(team_id):
@@ -148,6 +178,7 @@ def get_country_results_on_weekend(country='Германия', sunday=None):
             result[tnmnt['name']] = t_results
 
     return result
+
 
 if __name__ == '__main__':
     # print(get_team_info(3166))
