@@ -28,7 +28,7 @@ class XMLField(object):
 
     def __get__(self, instance, owner):
         if self.data[instance]:
-            if self.field_name == 'sources':
+            if self.field_name in {'sources', 'comments'}:
                 text = self.data[instance]
                 text = text.replace('_', '\_')
                 return u'*{0}*: {1}\n'.format(TRANSLATIONS[self.field_name],

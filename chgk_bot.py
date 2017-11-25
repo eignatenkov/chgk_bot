@@ -216,6 +216,7 @@ def ask(bot, update, args):
                 logger.info("Чат {0}, шлем ответ".format(chat_id))
                 if all_games[chat_id].hint:
                     bot.sendMessage(chat_id, all_games[chat_id].hint)
+
         job_queue.put(read_question, 20, repeat=False)
         job_queue.put(ten_seconds, 70, repeat=False)
         job_queue.put(time_is_up, 80, repeat=False)
@@ -399,7 +400,7 @@ def main():
         tour_db = json.loads(s3_tour_db.get()['Body'].read().decode('utf-8'))
         logger.info('База турниров загружена из s3')
     except ClientError:
-        logger.warn('В s3 пусто, выгружаем турниры из базы')
+        logger.warning('В s3 пусто, выгружаем турниры из базы')
         tour_db = export_tournaments()
         logger.info('Турниры выгружены из базы')
         with open('tour_db.json', 'w') as f:
