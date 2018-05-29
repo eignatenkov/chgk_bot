@@ -360,7 +360,7 @@ def current_results(bot, update):
             message += '{0}\t{1}\t{2}\t*{3}*\n'.format(item.get('name', '-'),
                                                      item.get('position', 0),
                                                      item.get('questions_total', 0),
-                                                     item.get('bonus_b', 0))
+                                                     item.get('diff_bonus', 0))
         message += '\n'
     if message == '':
         message = 'Пока нет результатов'
