@@ -10,7 +10,8 @@ class FindTeamByNameTestCase(unittest.TestCase):
         self.assertTrue(set(output.keys()) == {'items', 'total_items', 'current_items'})
         self.assertTrue(int(output['total_items']) >= 7)
         output_team = output['items'][0]
-        self.assertTrue(set(output_team.keys()) == {'idteam', 'name', 'town'})
+        self.assertTrue(set(output_team.keys()) == {'idteam', 'name', 'town',
+                                                    'region_name', 'country_name'})
         self.assertEqual(output_team['name'], pp_name)
 
     def test_team_not_found(self):
@@ -35,9 +36,10 @@ class GetTournamentResultsByIdTestCase(unittest.TestCase):
             'questions_total': '27',
             'mask': '101111100111000101111001111111111111',
             'bonus_a': '2297',
+            'diff_bonus': '62',
             'd_bonus_a': '2297',
-            'bonus_b': '62',
-            'tech_rating': '5771',
+            'bonus_b': '1487',
+            'tech_rating': '5767',
             'predicted_position': '3',
             'd_bonus_b': '1487',
             'd_diff_bonus': '62',

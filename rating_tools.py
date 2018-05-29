@@ -76,7 +76,7 @@ def get_weekend_tournaments(sunday=None):
     date_end = None
     if sunday:
         date_start = sunday - datetime.timedelta(days=3)
-        date_end = sunday + datetime.timedelta(days=3)
+        date_end = sunday + datetime.timedelta(days=4)
     return get_tournaments_by_dates(date_start, date_end)
 
 
@@ -102,6 +102,21 @@ def get_teams_by_town(town):
     result = dict()
     while True:
         url = 'http://rating.chgk.info/api/teams.json/search?town={0}&page={1}'.format(town, i)
+        raw_result = api_call(url)
+        result.update({item['idteam']: item['name'] for item in raw_result['items']})
+        if int(raw_result['total_items']) < int(raw_result['current_items'].split('-')[-1]):
+            break
+        else:
+            i += 1
+    return result
+
+
+def get_teams_by_country(country):
+    i = 1
+    result = dict()
+    while True:
+        url = 'http://rating.chgk.info/api/teams.json/search?country_name={0}&page={1}'.format(
+            country, i)
         raw_result = api_call(url)
         result.update({item['idteam']: item['name'] for item in raw_result['items']})
         if int(raw_result['total_items']) < int(raw_result['current_items'].split('-')[-1]):
@@ -153,14 +168,12 @@ def get_towns_by_country(country):
         page = BeautifulSoup(towns, 'html.parser')
         all_info = page.tbody.find_all('a')
     return [item.text.strip() for index, item in enumerate(all_info) if
-            not index % 4 and all_info[index+3].text.strip() != '-']
+            not index % 4 and all_info[index + 3].text.strip() != '-']
 
 
 def get_country_results_on_tournament(country, t_id, country_teams=None):
     if not country_teams:
-        country_teams = dict()
-        for town in get_towns_by_country(country):
-            country_teams.update(get_teams_by_town(town))
+        country_teams = get_teams_by_country(country)
     return get_teams_results_on_tournaments(country_teams, t_id)
 
 
@@ -168,12 +181,8 @@ def get_country_results_on_weekend(country='Германия', sunday=None):
     t_list = get_weekend_tournaments(sunday)
     result = {}
 
-    country_teams = dict()
-    for town in get_towns_by_country(country):
-        country_teams.update(get_teams_by_town(town))
-
     for tnmnt in t_list:
-        t_results = get_country_results_on_tournament(country, tnmnt['idtournament'], country_teams)
+        t_results = get_country_results_on_tournament(country, tnmnt['idtournament'])
         if len(t_results) > 0:
             result[tnmnt['name']] = t_results
 
@@ -196,5 +205,5 @@ if __name__ == '__main__':
             print('{0}\t{1}\t{2}\t{3}'.format(item.get('name', '-'),
                                               item.get('position', 0),
                                               item.get('questions_total', 0),
-                                              item.get('bonus_b', 0)))
+                                              item.get('diff_bonus', 0)))
         print('\n')
