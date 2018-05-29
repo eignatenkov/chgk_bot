@@ -1,6 +1,6 @@
 import unittest
 
-from rating_tools import find_team_by_name, get_tournament_results_by_id
+from rating_tools import find_team_by_name, get_tournament_results_by_id, get_teams_by_country
 
 
 class FindTeamByNameTestCase(unittest.TestCase):
@@ -19,6 +19,13 @@ class FindTeamByNameTestCase(unittest.TestCase):
         output = find_team_by_name(crazy_name)
         self.assertTrue(set(output.keys()) == {'items', 'total_items', 'current_items'})
         self.assertEqual(output['total_items'], '0')
+
+
+class GetTeamsByCountry(unittest.TestCase):
+    def test_happy_pass(self):
+        g_teams = get_teams_by_country('Германия')
+        print(g_teams)
+        self.assertTrue('Понты Пилата' in g_teams.values())
 
 
 class GetTournamentResultsByIdTestCase(unittest.TestCase):
