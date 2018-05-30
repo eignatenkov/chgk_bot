@@ -142,23 +142,6 @@ def get_teams_results_on_tournaments(teams, t_id):
             if item['idteam'] in teams_set]
 
 
-def get_town_results_on_tournament(town, t_id):
-    town_teams = get_teams_by_town(town)
-    return get_teams_results_on_tournaments(town_teams, t_id)
-
-
-def get_town_results_on_weekend(town, sunday=None):
-    t_list = get_weekend_tournaments(sunday)
-    result = {}
-
-    for tnmnt in t_list:
-        t_results = get_town_results_on_tournament(town, tnmnt['idtournament'])
-        if len(t_results) > 0:
-            result[tnmnt['name']] = t_results
-
-    return result
-
-
 def get_towns_by_country(country):
     enc_country = codecs.encode(country, encoding='cp1251')
     url = 'http://rating.chgk.info/geo.php?layout=town_list&country={}'.format(
@@ -171,18 +154,13 @@ def get_towns_by_country(country):
             not index % 4 and all_info[index + 3].text.strip() != '-']
 
 
-def get_country_results_on_tournament(country, t_id, country_teams=None):
-    if not country_teams:
-        country_teams = get_teams_by_country(country)
-    return get_teams_results_on_tournaments(country_teams, t_id)
-
-
 def get_country_results_on_weekend(country='Германия', sunday=None):
     t_list = get_weekend_tournaments(sunday)
+    country_teams = get_teams_by_country(country)
     result = {}
 
     for tnmnt in t_list:
-        t_results = get_country_results_on_tournament(country, tnmnt['idtournament'])
+        t_results = get_teams_results_on_tournaments(country_teams, tnmnt['idtournament'])
         if len(t_results) > 0:
             result[tnmnt['name']] = t_results
 
