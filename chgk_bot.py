@@ -353,7 +353,7 @@ def current_results(bot, update):
     chat_id = update.message.chat_id
     message = ''
     for key, value in get_country_results_on_weekend().items():
-        message += '*Турнир: {}*\n'.format(key)
+        message += '*Турнир: {}*\n'.format(key.replace('*', '\*'))
         message += 'Команда\tМесто\tВзято\tБонус\n'
         message += '`------------------------`\n'
         for item in sorted(value, key=lambda x: float(x.get('position', 0))):
