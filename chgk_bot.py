@@ -353,7 +353,7 @@ def current_results(bot, update):
     chat_id = update.message.chat_id
     message = ''
     for key, value in get_country_results_on_weekend().items():
-        message += '*Турнир: {}*\n'.format(key.replace('*', '\\*'))
+        message += '*Турнир: {}*\n'.format(key.replace('*', 'x'))
         message += 'Команда\tМесто\tВзято\tБонус\n'
         message += '`------------------------`\n'
         for item in sorted(value, key=lambda x: float(x.get('position', 0))):
@@ -445,9 +445,10 @@ def main():
         game_state = json.loads(s3_chgk_db.get()['Body'].read().decode('utf-8'))
 
         logger.info('Файл с состояниями игр прочитан')
-        for chat_id, game in game_state.items():
-            all_games[int(chat_id)] = Game(**game)
-        logger.info('Состояния игр успешно загружены')
+        if not args.test:
+            for chat_id, game in game_state.items():
+                all_games[int(chat_id)] = Game(**game)
+            logger.info('Состояния игр успешно загружены')
     except ClientError:
         logger.info('Состояния игр не найдены, играем с нуля')
 
