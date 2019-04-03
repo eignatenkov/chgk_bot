@@ -3,8 +3,10 @@
 """ tools for getting questions and tournaments from db.chgk.info
 """
 import json
-from urllib.request import urlopen, HTTPError
+import requests
+from urllib.request import urlopen
 from bs4 import BeautifulSoup
+import re
 import ssl
 
 # This restores the same behavior as before.
@@ -20,26 +22,14 @@ def neat(text):
     :param text: input string
     :return: edited text
     """
-    text = text.replace('\n\n', '_zzz_')
-    text = text.replace('\n', ' ')
-    text = text.replace('_zzz_', '\n\n')
-    text = text.replace('[', '\[')
-    # text = text.replace('_', '\_')
-    text = text.replace('*', '\*')
+    if isinstance(text, str):
+        text = text.replace('\n\n', '_zzz_')
+        text = text.replace('\n', ' ')
+        text = text.replace('_zzz_', '\n\n')
+        text = text.replace('[', '\[')
+        # text = text.replace('_', '\_')
+        text = text.replace('*', '\*')
     return text
-
-
-def strip_tags(tagged_text):
-    """
-    function that uses MLStripper and strips all HTML tags from text
-    :param tagged_text: tag from BeautifulSoup object
-    :return: edited text without any HTML tags in it
-    """
-    if '&' in tagged_text.text or '<' in tagged_text.text:
-        soup = BeautifulSoup(tagged_text.text, 'lxml')
-        return soup.text
-    else:
-        return tagged_text.text
 
 
 def recent_tournaments():
@@ -56,74 +46,40 @@ def recent_tournaments():
     return tournaments
 
 
-def tournament_info(url):
+def tournament_info(tournament_url):
     """
     get tournament info by it's url
-    :param url: url of tournament in db.chgk.info
+    :param tournament_url: url of tournament in db.chgk.info
     :return: dict with info about this tournament: description, number of
     tours, number of questions, editors, etc.
     """
-    url += '/xml'
-    try:
-        tournament_url = urlopen(url, context=CONTEXT)
-    except HTTPError:
-        return ''
-    tournament = BeautifulSoup(tournament_url, 'lxml-xml')
-    tournament_url.close()
+    url = f'http://api.baza-voprosov.ru/packages/{tournament_url}'
+    response = requests.get(url, headers={'accept': 'application/json'}).json()
     result = dict()
-    result['title'] = neat(tournament.Title.text)
-    description = '\n' + neat(tournament.PlayedAt.text)
-    if tournament.Editors.text:
-        description += '\n' + u'Редакторы: ' + tournament.Editors.text
-    if tournament.Info.text:
-        description += '\n' + neat(tournament.Info.text)
+    result['title'] = response['title']
+    description = '\n' + response['playedAt']
+    if response['editors']:
+        description += '\n' + u'Редакторы: ' + response['editors']
+    if response['info']:
+        description += '\n' + response['info']
     result['description'] = description
-    result['n_tours'] = int(tournament.ChildrenNum.text)
-    result['n_questions'] = [int(item.QuestionsNum.text) for item in
-                             tournament.find_all('tour')] if tournament.find_all('tour') else [int(tournament.QuestionsNum.text)]
-    result['tour_titles'] = [item.Title.text for item in
-                             tournament.find_all('tour')] if tournament.find_all('tour') else [tournament.Title.text]
-    result['tour_info'] = [neat(item.Info.text) if item.Info != tournament.Info
-                           else '' for item in tournament.find_all('tour')] if tournament.find_all('tour') else [tournament.Info.text]
-    result['tour_editors'] = [item.Editors.text if
-                              item.Editors != tournament.Editors else '' for
-                              item in tournament.find_all('tour')] if tournament.find_all('tour') else [tournament.Editors.text]
+    result['n_tours'] = len(response['tours'])
+    result['n_questions'] = [len(tour['questions']) for tour in response['tours']] if 'tours' in response else \
+        [len(response['Questions'])]
+    result['tour_titles'] = [tour['title'] for tour in response['tours']] if 'tours' in response else response['title']
+    result['tour_info'] = [tour['info'] for tour in response['tours']] if 'tours' in response else response['info']
+    result['tour_editors'] = [tour['editors'] if tour['editors'] != response['editors'] else '' for
+                              tour in response['tours']] if 'tours' in response else [response['editors']]
     return result
 
 
-def get_bs_response(url):
-    raw_url = urlopen(url, context=CONTEXT)
-    bs_parsed = BeautifulSoup(raw_url, 'lxml-xml')
-    raw_url.close()
-    return bs_parsed
-
-
 def q_and_a(tournament_url, tour, question):
-    """
-    get all necessary info about the question: text, handouts (if present),
-    answer, comments, author, sources.
-    :param tournament_url: tournament url
-    :param tour: tour number
-    :param question: question number
-    :return: dict with info about the question
-    """
-    url = 'http://db.chgk.info/question/{}.{}/{}/xml'.format(
-        tournament_url.split('/')[-1], tour, question)
-    quest = get_bs_response(url)
-    result = dict()
-    result['question'] = neat(strip_tags(quest.Question))
-    imageurl = BeautifulSoup(quest.Question.text, 'lxml').img
-    if imageurl:
-        result['question_image'] = imageurl['src']
-    result['answer'] = neat(strip_tags(quest.Answer))
-    if quest.Comments:
-        result['comments'] = neat(strip_tags(quest.Comments))
-    if quest.PassCriteria:
-        result['pass_criteria'] = neat(strip_tags(quest.PassCriteria))
-    if quest.Sources:
-        result['sources'] = neat(strip_tags(quest.Sources))
-    if quest.Authors:
-        result['authors'] = strip_tags(quest.Authors)
+    url = f'http://api.baza-voprosov.ru/questions/{tournament_url}.{tour}-{question}'
+    response = requests.get(url, headers={'accept': 'application/json'}).json()
+    result = {k: neat(v) for k, v in response.items()}
+    m = re.search(r'(?<=pic: )\w+.jpg', result['question'])
+    if m:
+        result['question_image'] = f"https://db.chgk.info/images/db/{m.group(0)}"
     return result
 
 

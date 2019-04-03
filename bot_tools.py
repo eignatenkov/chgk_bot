@@ -98,10 +98,10 @@ class Tournament(object):
     """
     def __init__(self, url):
         if url:
-            self.url = url
+            self.url = url.rsplit('/', maxsplit=1)[-1]
         else:
             return
-        data = tournament_info(url)
+        data = tournament_info(self.url)
         if not data:
             raise TournamentError
         self.title = data.get('title', '')
