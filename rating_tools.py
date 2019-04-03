@@ -29,6 +29,11 @@ def get_tournament_results_by_id(tournament_id):
     return api_call(url)
 
 
+def get_tournament_results_by_country(tournament_id, country):
+    url = f"http://rating.chgk.info/api/tournaments/{tournament_id}/list/country/{country}"
+    return api_call(url)
+
+
 def get_tournaments(page=None):
     url = 'http://rating.chgk.info/api/tournaments.json'
     if page:
