@@ -57,6 +57,8 @@ def tournament_info(tournament_url):
     response = requests.get(url, headers={'accept': 'application/json'}).json()
     result = dict()
     result['title'] = response['title']
+    if response['playedAt'] is None:
+        response['playedAt'] = ''
     description = '\n' + response['playedAt']
     if response['editors']:
         description += '\n' + u'Редакторы: ' + response['editors']
