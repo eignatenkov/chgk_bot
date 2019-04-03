@@ -1,32 +1,24 @@
 import unittest
 
-from xml_tools import tournament_info, q_and_a, get_bs_response
+from xml_tools import tournament_info, q_and_a
 
 
 class TournamentInfoTestCase(unittest.TestCase):
     def test_happy_pass(self):
-        t_url = 'https://db.chgk.info/tour/kra-fm17'
+        t_url = 'kra-fm17'
         t_info = tournament_info(t_url)
         # for k, v in t_info.items():
         #     print(k, v)
         self.assertTrue(isinstance(t_info, dict))
 
 
-class BSParsedTestCase(unittest.TestCase):
-    def test_happy_pass(self):
-        url = 'https://db.chgk.info/question/kritik17.2/4/xml'
-        output = get_bs_response(url)
-        self.assertEqual(output.number.text, '4')
-        self.assertTrue(output.Question.text.startswith('Внимание'))
-        self.assertTrue(output.Answer.text.startswith('Распорядился'))
-
-
 class QAndATestCase(unittest.TestCase):
     def test_happy_pass(self):
-        t_url = 'https://db.chgk.info/tour/kritik17'
+        t_url = 'kritik17'
         tour = 2
         question = 4
         output = q_and_a(t_url, tour, question)
+        print(output)
         true_output = {
             'question': 'Внимание, колонка!\n\n\xa0\xa0\xa0\xa0\n\n\xa0\xa0\xa0\xa0Доктор Джон Сноу был одним из первых ученых, который приложил руку к выявлению источников холеры. На розданном вам фото — необычный памятник, на котором можно увидеть результат простых действий, предпринятых Сноу. Что именно сделал Сноу 7 сентября 1854 года, чтобы прекратить распространение эпидемии в лондонском районе Брод-стрит?',
             'question_image': 'http://db.chgk.info/images/db/20170189.jpg',
