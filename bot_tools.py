@@ -1,81 +1,59 @@
 """
 Implementation of classes Question, Tournament and Game
 """
-from weakref import WeakKeyDictionary
 from operator import itemgetter
-from xml_tools import q_and_a, tournament_info, recent_tournaments
-from constants import TRANSLATIONS
+import requests
+import re
+from xml_tools import neat, tournament_info, recent_tournaments
 import logging
 
 # Enable logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
 logger = logging.getLogger(__name__)
-
-
-class XMLField(object):
-    """
-    descriptor class for Question fields
-    """
-    def __init__(self, field_name, default_value=''):
-        self.field_name = field_name
-        self.default_value = default_value
-        self.data = WeakKeyDictionary()
-
-    def __set__(self, instance, question_dict):
-        self.data[instance] = question_dict.get(self.field_name, '')
-
-    def __get__(self, instance, owner):
-        if self.data[instance]:
-            if self.field_name in {'sources', 'comments'}:
-                text = self.data[instance]
-                text = text.replace('_', '\_')
-                return u'*{0}*: {1}\n'.format(TRANSLATIONS[self.field_name],
-                                              text)
-            else:
-                return u'*{0}*: {1}\n'.format(TRANSLATIONS[self.field_name],
-                                              self.data[instance])
-        else:
-            return ''
 
 
 class Question(object):
     """
     question with all its fields
     """
-    answer = XMLField('answer')
-    pass_criteria = XMLField('pass_criteria')
-    comments = XMLField('comments')
-    sources = XMLField('sources')
-    authors = XMLField('authors')
-
-    def __init__(self, tournament_id, tour_number, question_number):
+    def __init__(self, question_id: str):
         """
-        :param tournament_id:
-        :param tour_number:
-        :param question_number:
+        :param question_id: question id, e.g. "ivan18_u.1-1"
         :return: instance of Question with all fields filled
         """
-        question_dict = q_and_a(tournament_id, tour_number, question_number)
-        self.id = (tournament_id, tour_number, question_number)
-        self.question_number = question_number
+
+        url = f'http://api.baza-voprosov.ru/questions/{question_id}'
+        response = requests.get(url, headers={'accept': 'application/json'}).json()
+        question_dict = {k: neat(v) for k, v in response.items()}
+        m = re.search(r'(?<=pic: )\w+.jpg', question_dict['question'])
+        if m:
+            question_dict['question_image'] = f"https://db.chgk.info/images/db/{m.group(0)}"
+        self.id = question_id
+        self.number = question_dict['number']
         self.question = question_dict.get('question', '')
         self.question_image = question_dict.get('question_image', '')
-        self.answer = question_dict
-        self.pass_criteria = question_dict
-        self.comments = question_dict
-        self.sources = question_dict
-        self.authors = question_dict
+        self.answer = question_dict['answer']
+        self.pass_criteria = question_dict['passCriteria']
+        self.comments = question_dict['comments']
+        self.sources = question_dict['sources']
+        self.authors = question_dict['authors']
 
     @property
     def full_answer(self):
         """
         :return: text of answer with all the complementary fields
         """
-        return u'{0}{1}{2}{3}{4}'.format(self.answer, self.pass_criteria,
-                                         self.comments, self.sources,
-                                         self.authors)
+        full_answer = f"*Ответ*: {self.answer}"
+        if self.pass_criteria:
+            full_answer += f"\n*Зачет*: {self.pass_criteria}"
+        if self.comments:
+            full_answer += f"\n*Комментарии*: {self.comments}"
+        if self.sources:
+            full_answer += f"\n*Источники*: {self.sources}"
+        if self.authors:
+            full_answer += f"\n*Авторы*: {self.authors}"
+        return full_answer
 
 
 class TournamentError(Exception):
@@ -97,10 +75,9 @@ class Tournament(object):
     class for tournament
     """
     def __init__(self, url):
-        if url:
-            self.url = url.rsplit('/', maxsplit=1)[-1]
-        else:
+        if not url:
             return
+        self.url = url.rsplit('/', maxsplit=1)[-1]
         data = tournament_info(self.url)
         if not data:
             raise TournamentError
@@ -108,6 +85,7 @@ class Tournament(object):
         self.description = data.get('description', '')
         self.number_of_tours = data.get('n_tours', '')
         self.number_of_questions = data.get('n_questions', [])
+        self.question_ids = data.get('question_ids', [])
         self.tour_titles = data.get('tour_titles', [])
         self.tour_info = data.get('tour_info', [])
         self.tour_editors = data.get('tour_editors', [])
@@ -131,14 +109,10 @@ class Tournament(object):
             raise StopIteration
         else:
             self.current_question += 1
-            if self.current_question > \
-                    self.number_of_questions[self.current_tour - 1]:
+            if self.current_question > self.number_of_questions[self.current_tour - 1]:
                 self.current_question = 1
                 self.current_tour += 1
-            question = Question(self.url,
-                                self.current_tour,
-                                self.current_question)
-            return question
+            return Question(self.question_ids[self.current_tour - 1][self.current_question - 1])
 
     def next_tour(self):
         """
@@ -283,27 +257,25 @@ class Game(object):
         :return: объект Question
         """
         try:
-            question = next(self.current_tournament)
-            self.state = question.id
+            ct = self.current_tournament
+            question = next(ct)
+            self.state = (ct.url, ct.current_tour, ct.current_question)
             self.current_answer = question.full_answer
             self.hint = ''
             preface = ''
-            if self.state[2] == self.current_tournament.number_of_questions[
-                    self.state[1]-1]:
-                if self.state[1] == self.current_tournament.number_of_tours:
+            if ct.current_question == ct.number_of_questions[ct.current_tour - 1]:
+                if ct.current_tour == ct.number_of_tours:
                     self.hint = 'Конец турнира'
                 else:
                     self.hint = 'Конец тура'
-            if self.state[2] == 1:
-                tour_number = self.state[1]-1
-                tour_titles = self.current_tournament.tour_titles
+            if question.number == 1:
+                tour_number = ct.current_tour - 1
+                tour_titles = ct.tour_titles
                 preface = tour_titles[tour_number]
-                if self.current_tournament.tour_editors[tour_number]:
-                    preface += '\nРедакторы: ' + \
-                        self.current_tournament.tour_editors[tour_number]
-                if self.current_tournament.tour_info[tour_number]:
-                    preface += '\n' + \
-                               self.current_tournament.tour_info[tour_number]
+                if ct.tour_editors[tour_number]:
+                    preface += '\nРедакторы: ' + ct.tour_editors[tour_number]
+                if ct.tour_info[tour_number]:
+                    preface += '\n' + ct.tour_info[tour_number]
             return preface, question
         except TypeError:
             raise

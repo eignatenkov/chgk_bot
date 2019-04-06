@@ -176,8 +176,8 @@ def ask(bot, update, args):
         if preface:
             bot.sendMessage(chat_id, preface)
         logger.info("Чат {0}, задаем вопрос {1}".format(
-            chat_id, question.question_number))
-        bot.sendMessage(chat_id, 'Вопрос {}'.format(question.question_number))
+            chat_id, question.number))
+        bot.sendMessage(chat_id, 'Вопрос {}'.format(question.number))
         sleep(1)
         if question.question_image:
             image = urlopen(question.question_image, context=CONTEXT)

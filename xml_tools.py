@@ -6,7 +6,6 @@ import json
 import requests
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
-import re
 import ssl
 
 # This restores the same behavior as before.
@@ -27,7 +26,7 @@ def neat(text):
         text = text.replace('\n', ' ')
         text = text.replace('_zzz_', '\n\n')
         text = text.replace('[', '\[')
-        # text = text.replace('_', '\_')
+        text = text.replace('_', '\_')
         text = text.replace('*', '\*')
     return text
 
@@ -68,20 +67,11 @@ def tournament_info(tournament_url):
     result['n_tours'] = len(response['tours'])
     result['n_questions'] = [len(tour['questions']) for tour in response['tours']] if 'tours' in response else \
         [len(response['Questions'])]
+    result['question_ids'] = [[question['id'] for question in tour['questions']] for tour in response['tours']]
     result['tour_titles'] = [tour['title'] for tour in response['tours']] if 'tours' in response else response['title']
     result['tour_info'] = [tour['info'] for tour in response['tours']] if 'tours' in response else response['info']
     result['tour_editors'] = [tour['editors'] if tour['editors'] != response['editors'] else '' for
                               tour in response['tours']] if 'tours' in response else [response['editors']]
-    return result
-
-
-def q_and_a(tournament_url, tour, question):
-    url = f'http://api.baza-voprosov.ru/questions/{tournament_url}.{tour}-{question}'
-    response = requests.get(url, headers={'accept': 'application/json'}).json()
-    result = {k: neat(v) for k, v in response.items()}
-    m = re.search(r'(?<=pic: )\w+.jpg', result['question'])
-    if m:
-        result['question_image'] = f"https://db.chgk.info/images/db/{m.group(0)}"
     return result
 
 
