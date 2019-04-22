@@ -26,7 +26,11 @@ def find_team_by_name(name):
 def get_tournament_results_by_id(tournament_id):
     url = 'http://rating.chgk.info/api/tournaments/{}/list.json'.format(
         tournament_id)
-    return api_call(url)
+    results = api_call(url)
+    if 'position' not in results[0] and not all(int(results[i]['idteam']) <= int(results[i + 1]['idteam']) for i in range(len(results)-1)):
+        for i in range(len(results)):
+            results[i]['position'] = str(i + 1)
+    return results
 
 
 def get_tournament_results_by_country(tournament_id, country):
