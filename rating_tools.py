@@ -28,8 +28,17 @@ def get_tournament_results_by_id(tournament_id):
         tournament_id)
     results = api_call(url)
     if results and 'position' not in results[0] and not all(int(results[i]['idteam']) <= int(results[i + 1]['idteam']) for i in range(len(results)-2)):
-        for i in range(len(results)):
-            results[i]['position'] = str(i + 1)
+        segment_start = 0
+        segment_places = [1]
+        for i in range(1, len(results) + 1):
+            if i == len(results) or results[i]['idteam'] < results[i - 1]['idteam']:
+                avg_place = sum(segment_places) / len(segment_places)
+                for j in range(segment_start, i):
+                    results[j]['position'] = str(avg_place)
+                segment_start = i
+                segment_places = [i + 1]
+            else:
+                segment_places.append(i + 1)
     return results
 
 
