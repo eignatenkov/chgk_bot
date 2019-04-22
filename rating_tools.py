@@ -66,7 +66,8 @@ def get_tournaments_by_dates(date_start=None, date_end=None):
     """
     result = []
     today = datetime.date.today()
-    last_sunday = today - datetime.timedelta(days=today.weekday()+1)
+    # if today is Sunday, show current weekend already
+    last_sunday = today - datetime.timedelta(days=(today.weekday()+1) % 7)
     if date_start is None:
         date_start = last_sunday - datetime.timedelta(days=3)
     if date_end is None:
