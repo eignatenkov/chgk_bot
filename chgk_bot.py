@@ -374,7 +374,7 @@ def current_results(bot, update):
         message += "Команда\tМесто\tВзято\tБонус\n"
         message += "`------------------------`\n"
         for item in sorted(value, key=lambda x: float(x.get("position", 0))):
-            message += "{0}\t{1}\t{2}\t*▲{3}*\n".format(
+            message += "{0}\t{1}\t{2}\t*{3}*\n".format(
                 item.get("name", "-"),
                 item.get("position", 0),
                 item.get("questions_total", 0),
