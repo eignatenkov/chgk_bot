@@ -75,7 +75,7 @@ class Tournament(object):
     class for tournament
     """
     def __init__(self, url):
-        if not url:
+        if not url or url == '_u':
             return
         self.url = url.rsplit('/', maxsplit=1)[-1]
         data = tournament_info(self.url)
