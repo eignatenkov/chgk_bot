@@ -54,6 +54,8 @@ def tournament_info(tournament_url):
     """
     url = f'http://api.baza-voprosov.ru/packages/{tournament_url}'
     response = requests.get(url, headers={'accept': 'application/json'}).json()
+    if response['title'] == "An error occured":
+        return
     result = dict()
     result['title'] = response['title']
     if response.get('playedAt') is None:
