@@ -15,11 +15,11 @@ def api_call(url):
     # with requests.Session() as session:
     #     session.get("http://rating.chgk.info")
     response = session.get(url)
-    return json.loads(response.content.decode('UTF-8'))
+    return json.loads(response.content.decode("UTF-8"))
 
 
 def find_team_by_name(name):
-    url = 'http://rating.chgk.info/api/teams.json/search?name={}'.format(name)
+    url = "http://rating.chgk.info/api/teams.json/search?name={}".format(name)
     return api_call(url)
 
 
@@ -48,9 +48,9 @@ def get_tournament_results_by_country(tournament_id, country):
 
 
 def get_tournaments(page=None):
-    url = 'http://rating.chgk.info/api/tournaments.json'
+    url = "http://rating.chgk.info/api/tournaments.json"
     if page:
-        url += '/?page={}'.format(page)
+        url += "/?page={}".format(page)
     return api_call(url)
 
 
@@ -75,14 +75,14 @@ def get_tournaments_by_dates(date_start=None, date_end=None):
     if date_start > date_end:
         return []
     tournaments_fp = get_tournaments()
-    n_tournaments = int(tournaments_fp['total_items'])
-    tournaments = tournaments_fp['items']
+    n_tournaments = int(tournaments_fp["total_items"])
+    tournaments = tournaments_fp["items"]
     for i in range(1, math.ceil(n_tournaments / 1000) + 1):
-        tournaments.extend(get_tournaments(i)['items'])
+        tournaments.extend(get_tournaments(i)["items"])
     for t in tournaments:
         try:
-            begin = date_parse(t['date_start']).date()
-            end = date_parse(t['date_end']).date()
+            begin = date_parse(t["date_start"]).date()
+            end = date_parse(t["date_end"]).date()
         except ValueError:
             continue
         if begin >= date_start and end <= date_end:
@@ -100,19 +100,19 @@ def get_weekend_tournaments(sunday=None):
 
 
 def get_team_info(team_id):
-    url = 'http://rating.chgk.info/api/teams/{}'.format(team_id)
+    url = "http://rating.chgk.info/api/teams/{}".format(team_id)
     return api_call(url)[0]
 
 
 def get_team_rating(team_id, release_id=None, last=False):
     if release_id:
-        url = 'http://rating.chgk.info/api/teams/{0}/rating/{1}.json'.format(
-            team_id, release_id)
+        url = "http://rating.chgk.info/api/teams/{0}/rating/{1}.json".format(
+            team_id, release_id
+        )
     elif last:
-        url = 'http://rating.chgk.info/api/teams/{}/rating/b.json'.format(
-            team_id)
+        url = "http://rating.chgk.info/api/teams/{}/rating/b.json".format(team_id)
     else:
-        url = 'http://rating.chgk.info/api/teams/{}/rating.json'.format(team_id)
+        url = "http://rating.chgk.info/api/teams/{}/rating.json".format(team_id)
     return api_call(url)
 
 
@@ -120,10 +120,14 @@ def get_teams_by_town(town):
     i = 1
     result = dict()
     while True:
-        url = 'http://rating.chgk.info/api/teams.json/search?town={0}&page={1}'.format(town, i)
+        url = "http://rating.chgk.info/api/teams.json/search?town={0}&page={1}".format(
+            town, i
+        )
         raw_result = api_call(url)
-        result.update({item['idteam']: item['name'] for item in raw_result['items']})
-        if int(raw_result['total_items']) < int(raw_result['current_items'].split('-')[-1]):
+        result.update({item["idteam"]: item["name"] for item in raw_result["items"]})
+        if int(raw_result["total_items"]) < int(
+            raw_result["current_items"].split("-")[-1]
+        ):
             break
         else:
             i += 1
@@ -134,11 +138,14 @@ def get_teams_by_country(country):
     i = 1
     result = dict()
     while True:
-        url = 'http://rating.chgk.info/api/teams.json/search?country_name={0}&page={1}'.format(
-            country, i)
+        url = "http://rating.chgk.info/api/teams.json/search?country_name={0}&page={1}".format(
+            country, i
+        )
         raw_result = api_call(url)
-        result.update({item['idteam']: item['name'] for item in raw_result['items']})
-        if int(raw_result['total_items']) < int(raw_result['current_items'].split('-')[-1]):
+        result.update({item["idteam"]: item["name"] for item in raw_result["items"]})
+        if int(raw_result["total_items"]) < int(
+            raw_result["current_items"].split("-")[-1]
+        ):
             break
         else:
             i += 1
@@ -146,7 +153,7 @@ def get_teams_by_country(country):
 
 
 def get_player_info(player_id):
-    url = 'http://rating.chgk.info/api/players/{}.json'.format(player_id)
+    url = "http://rating.chgk.info/api/players/{}.json".format(player_id)
     return api_call(url)
 
 
@@ -154,39 +161,47 @@ def get_teams_results_on_tournaments(teams, t_id):
     teams_set = set(teams)
 
     def add_title(team_info):
-        team_info['name'] = teams[team_info['idteam']]
+        team_info["name"] = teams[team_info["idteam"]]
         return team_info
 
-    return [add_title(item) for item in get_tournament_results_by_id(t_id)
-            if item['idteam'] in teams_set]
+    return [
+        add_title(item)
+        for item in get_tournament_results_by_id(t_id)
+        if item["idteam"] in teams_set
+    ]
 
 
 def get_towns_by_country(country):
-    enc_country = codecs.encode(country, encoding='cp1251')
-    url = 'http://rating.chgk.info/geo.php?layout=town_list&country={}'.format(
-        str(enc_country).strip('b\'').replace('\\x', '%')
+    enc_country = codecs.encode(country, encoding="cp1251")
+    url = "http://rating.chgk.info/geo.php?layout=town_list&country={}".format(
+        str(enc_country).strip("b'").replace("\\x", "%")
     )
     with urlopen(url) as towns:
-        page = BeautifulSoup(towns, 'html.parser')
-        all_info = page.tbody.find_all('a')
-    return [item.text.strip() for index, item in enumerate(all_info) if
-            not index % 4 and all_info[index + 3].text.strip() != '-']
+        page = BeautifulSoup(towns, "html.parser")
+        all_info = page.tbody.find_all("a")
+    return [
+        item.text.strip()
+        for index, item in enumerate(all_info)
+        if not index % 4 and all_info[index + 3].text.strip() != "-"
+    ]
 
 
-def get_country_results_on_weekend(country='Германия', sunday=None):
+def get_country_results_on_weekend(country="Германия", sunday=None):
     t_list = get_weekend_tournaments(sunday)
     country_teams = get_teams_by_country(country)
     result = {}
 
     for tnmnt in t_list:
-        t_results = get_teams_results_on_tournaments(country_teams, tnmnt['idtournament'])
+        t_results = get_teams_results_on_tournaments(
+            country_teams, tnmnt["idtournament"]
+        )
         if len(t_results) > 0:
-            result[tnmnt['name']] = t_results
+            result[tnmnt["name"]] = t_results
 
     return result
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # print(get_team_info(3166))
     # print(get_weekend_tournaments(datetime.date(2016,9,18)))
     # print(get_town_results_on_weekend('Берлин'))
@@ -197,10 +212,14 @@ if __name__ == '__main__':
     #     print(item)
     for key, value in get_country_results_on_weekend().items():
         print(key)
-        print('Команда\tПозиция\tВзято\tБонус')
-        for item in sorted(value, key=lambda x: float(x.get('position', 0))):
-            print('{0}\t{1}\t{2}\t{3}'.format(item.get('name', '-'),
-                                              item.get('position', 0),
-                                              item.get('questions_total', 0),
-                                              item.get('diff_bonus', 0)))
-        print('\n')
+        print("Команда\tПозиция\tВзято\tБонус")
+        for item in sorted(value, key=lambda x: float(x.get("position", 0))):
+            print(
+                "{0}\t{1}\t{2}\t{3}".format(
+                    item.get("name", "-"),
+                    item.get("position", 0),
+                    item.get("questions_total", 0),
+                    item.get("diff_bonus", 0),
+                )
+            )
+        print("\n")
