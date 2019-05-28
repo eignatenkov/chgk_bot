@@ -31,7 +31,7 @@ def get_tournament_results_by_id(tournament_id):
         segment_start = 0
         segment_places = [1]
         for i in range(1, len(results) + 1):
-            if i == len(results) or results[i]['idteam'] < results[i - 1]['idteam']:
+            if i == len(results) or int(results[i]['idteam']) < int(results[i - 1]['idteam']):
                 avg_place = sum(segment_places) / len(segment_places)
                 for j in range(segment_start, i):
                     results[j]['position'] = str(avg_place)
