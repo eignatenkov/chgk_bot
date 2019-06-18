@@ -39,6 +39,8 @@ def get_tournament_results_by_id(tournament_id):
                 segment_places = [i + 1]
             else:
                 segment_places.append(i + 1)
+    else:
+        results = sorted(results, key=lambda x: float(x['position']))
     return results
 
 
@@ -138,14 +140,26 @@ def get_teams_by_country(country):
     i = 1
     result = dict()
     while True:
-        url = "http://rating.chgk.info/api/teams.json/search?country_name={0}&page={1}".format(
-            country, i
-        )
+        url = f"http://rating.chgk.info/api/teams.json/search?country_name={country}&page={i}"
         raw_result = api_call(url)
         result.update({item["idteam"]: item["name"] for item in raw_result["items"]})
         if int(raw_result["total_items"]) < int(
             raw_result["current_items"].split("-")[-1]
         ):
+            break
+        else:
+            i += 1
+    return result
+
+
+def get_active_teams():
+    i = 1
+    result = []
+    while True:
+        url = f"https://rating.chgk.info/api/teams.json/search?name=&active_this_season=1&page={i}"
+        raw_result = api_call(url)
+        result += raw_result["items"]
+        if int(raw_result["total_items"]) < int(raw_result["current_items"].split("-")[-1]):
             break
         else:
             i += 1
