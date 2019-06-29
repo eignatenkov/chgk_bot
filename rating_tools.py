@@ -39,6 +39,8 @@ def get_tournament_results_by_id(tournament_id):
                 segment_places = [i + 1]
             else:
                 segment_places.append(i + 1)
+    else:
+        results = sorted(results, key=lambda x: float(x['position']))
     return results
 
 
