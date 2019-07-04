@@ -56,6 +56,14 @@ def get_tournaments(page=None):
     return api_call(url)
 
 
+def get_tournaments_ids_for_team(team_id, season_id=None):
+    url = f"https://rating.chgk.info/api/teams/{team_id}/tournaments"
+    if season_id is not None:
+        url += f"/{season_id}"
+    url += ".json"
+    return api_call(url)
+
+
 def get_tournaments_by_dates(date_start=None, date_end=None):
     """
     returns tournaments played between date_start and date_end. If both are None returns
