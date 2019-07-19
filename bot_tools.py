@@ -27,21 +27,21 @@ class Question(object):
 
         url = f"http://api.baza-voprosov.ru/questions/{question_id}"
         response = requests.get(url, headers={"accept": "application/json"}).json()
-        question_dict = {k: neat(v) for k, v in response.items()}
-        m = re.search(r"(?<=pic: )\w+.jpg", question_dict["question"])
+        m = re.search(r"(?<=pic: )\S*(?=\))", response["question"])
         if m:
-            question_dict[
-                "question_image"
-            ] = f"https://db.chgk.info/images/db/{m.group(0)}"
+            response["question_image"] = m.group(0)
+            response["question"] = re.sub(r"\(pic: \S*\) \n", "", response["question"])
+        response["question"] = response["question"].replace("<раздатка>", "Раздаточный материал:")
+        response["question"] = response["question"].replace("</раздатка>", "")
         self.id = question_id
-        self.number = question_dict["number"]
-        self.question = question_dict.get("question", "")
-        self.question_image = question_dict.get("question_image", "")
-        self.answer = question_dict["answer"]
-        self.pass_criteria = question_dict["passCriteria"]
-        self.comments = question_dict["comments"]
-        self.sources = question_dict["sources"]
-        self.authors = question_dict["authors"]
+        self.number = response["number"]
+        self.question = neat(response.get("question", ""))
+        self.question_image = response.get("question_image", "")
+        self.answer = neat(response["answer"])
+        self.pass_criteria = neat(response["passCriteria"])
+        self.comments = neat(response["comments"])
+        self.sources = neat(response["sources"])
+        self.authors = neat(response["authors"])
 
     @property
     def full_answer(self):

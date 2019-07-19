@@ -183,6 +183,7 @@ def ask(bot, update, args):
         bot.sendMessage(chat_id, "Вопрос {}".format(question.number))
         sleep(1)
         if question.question_image:
+            logger.info(f"trying to open image {question.question_image}")
             image = urlopen(question.question_image, context=CONTEXT)
             bot.sendPhoto(chat_id, image)
         custom_keyboard = [["/ask", "/answer"]]
