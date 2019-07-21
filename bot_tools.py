@@ -43,21 +43,21 @@ class Question(object):
         handout = None
         handout_is_a_pic = False
         if "<раздатка>" in question:
-            m = re.search(r"(?<=<раздатка>)\S*(?=</раздатка>)", question)
+            m = re.search(r"(?<=<раздатка>)[\S\s]*(?=</раздатка>)", question)
             handout = m.group(0).strip("\n ")
-            question = re.sub(r"<раздатка>\S</раздатка>", "", question).strip("\n ")
+            question = re.sub(r"<раздатка>[\S\s]*</раздатка>", "", question).strip("\n ")
         elif "[Раздаточный материал:" in question:
-            m = re.search(r"(?<=\[Раздаточный материал:)\S*(?=\])", question)
+            m = re.search(r"(?<=\[Раздаточный материал:)[\S\s]*(?=\])", question)
             handout = m.group(0).strip("\n ")
-            question = re.sub(r"\[Раздаточный материал:\S\]", "", question).strip("\n ")
+            question = re.sub(r"\[Раздаточный материал:[\S\s]*\]", "", question).strip("\n ")
         elif "(pic:" in question:
             handout_is_a_pic = True
             m = re.search(r"(?<=pic: )\S*(?=\))", question)
             handout = m.group(0).strip("\n ")
             question = re.sub(r"\(pic: \S*\) \n", "", question).strip("\n ")
-        if "(pic:" in handout:
+        if handout and "(pic:" in handout:
             handout_is_a_pic = True
-            m = re.search(r"(?<=pic: )\S*(?=\))", question)
+            m = re.search(r"(?<=pic: )\S*(?=\))", handout)
             handout = m.group(0).strip("\n ")
         return question, handout, handout_is_a_pic
 
@@ -296,6 +296,7 @@ class Game(object):
         :return: объект Question
         """
         try:
+            logger.info("Начинаем задавать очередной вопрос")
             ct = self.current_tournament
             question = next(ct)
             self.state = (ct.url, ct.current_tour, ct.current_question)

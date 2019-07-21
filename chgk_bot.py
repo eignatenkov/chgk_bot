@@ -184,9 +184,9 @@ def ask(bot, update, args):
         sleep(1)
         if question.handout:
             bot.sendMessage(chat_id, "Раздаточный материал:")
-            if question.handout_is_a_pic:
-                logger.info(f"trying to open image {question.question_image}")
-                image = urlopen(question.question_image, context=CONTEXT)
+            if question.handout_is_a_pic and not question.handout.endswith('jpg'):
+                logger.info(f"trying to open image {question.handout}")
+                image = urlopen(question.handout, context=CONTEXT)
                 bot.sendPhoto(chat_id, image)
             else:
                 bot.sendMessage(chat_id, question.handout)
