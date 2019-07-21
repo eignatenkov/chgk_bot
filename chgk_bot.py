@@ -165,7 +165,7 @@ def ask(bot, update, args):
     elif len(args) == 2:
         try:
             tour, number = [int(arg) for arg in args]
-            print(tour, number)
+            logger.info(f"задаем вопрос {number} из тура {tour}")
             q_numbers = all_games[chat_id].current_tournament.number_of_questions
             if q_numbers[0] < q_numbers[1]:
                 tour += 1
@@ -182,10 +182,14 @@ def ask(bot, update, args):
         logger.info("Чат {0}, задаем вопрос {1}".format(chat_id, question.number))
         bot.sendMessage(chat_id, "Вопрос {}".format(question.number))
         sleep(1)
-        if question.question_image:
-            logger.info(f"trying to open image {question.question_image}")
-            image = urlopen(question.question_image, context=CONTEXT)
-            bot.sendPhoto(chat_id, image)
+        if question.handout:
+            bot.sendMessage(chat_id, "Раздаточный материал:")
+            if question.handout_is_a_pic:
+                logger.info(f"trying to open image {question.question_image}")
+                image = urlopen(question.question_image, context=CONTEXT)
+                bot.sendPhoto(chat_id, image)
+            else:
+                bot.sendMessage(chat_id, question.handout)
         custom_keyboard = [["/ask", "/answer"]]
         reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
         bot.sendMessage(
