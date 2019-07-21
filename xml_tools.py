@@ -22,12 +22,14 @@ def neat(text):
     :return: edited text
     """
     if isinstance(text, str):
-        text = text.replace("\n\n", "_zzz_")
-        text = text.replace("\n", " ")
-        text = text.replace("_zzz_", "\n\n")
-        text = text.replace("[", "\[")
+        # text = text.replace("\n\n", "_zzz_")
+        # text = text.replace("\n", " ")
+        # text = text.replace("_zzz_", "\n\n")
+        # text = text.replace("[", "\[")
         text = text.replace("_", "\_")
         text = text.replace("*", "\*")
+        text = text.replace("<i>", "_")
+        text = text.replace("</i>", "_")
     return text
 
 

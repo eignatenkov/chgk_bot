@@ -24,24 +24,42 @@ class Question(object):
         :param question_id: question id, e.g. "ivan18_u.1-1"
         :return: instance of Question with all fields filled
         """
-
         url = f"http://api.baza-voprosov.ru/questions/{question_id}"
         response = requests.get(url, headers={"accept": "application/json"}).json()
-        question_dict = {k: neat(v) for k, v in response.items()}
-        m = re.search(r"(?<=pic: )\w+.jpg", question_dict["question"])
-        if m:
-            question_dict[
-                "question_image"
-            ] = f"https://db.chgk.info/images/db/{m.group(0)}"
+        question, handout, handout_is_a_pic = Question.extract_handout(response["question"])
         self.id = question_id
-        self.number = question_dict["number"]
-        self.question = question_dict.get("question", "")
-        self.question_image = question_dict.get("question_image", "")
-        self.answer = question_dict["answer"]
-        self.pass_criteria = question_dict["passCriteria"]
-        self.comments = question_dict["comments"]
-        self.sources = question_dict["sources"]
-        self.authors = question_dict["authors"]
+        self.number = response["number"]
+        self.question = neat(question)
+        self.handout = handout
+        self.handout_is_a_pic = handout_is_a_pic
+        self.answer = neat(response["answer"])
+        self.pass_criteria = neat(response["passCriteria"])
+        self.comments = neat(response["comments"])
+        self.sources = neat(response["sources"])
+        self.authors = neat(response["authors"])
+
+    @staticmethod
+    def extract_handout(question):
+        handout = None
+        handout_is_a_pic = False
+        if "<раздатка>" in question:
+            m = re.search(r"(?<=<раздатка>)[\S\s]*(?=</раздатка>)", question)
+            handout = m.group(0).strip("\n ")
+            question = re.sub(r"<раздатка>[\S\s]*</раздатка>", "", question).strip("\n ")
+        elif "[Раздаточный материал:" in question:
+            m = re.search(r"(?<=\[Раздаточный материал:)[\S\s]*(?=\])", question)
+            handout = m.group(0).strip("\n ")
+            question = re.sub(r"\[Раздаточный материал:[\S\s]*\]", "", question).strip("\n ")
+        elif "(pic:" in question:
+            handout_is_a_pic = True
+            m = re.search(r"(?<=pic: )\S*(?=\))", question)
+            handout = m.group(0).strip("\n ")
+            question = re.sub(r"\(pic: \S*\) \n", "", question).strip("\n ")
+        if handout and "(pic:" in handout:
+            handout_is_a_pic = True
+            m = re.search(r"(?<=pic: )\S*(?=\))", handout)
+            handout = m.group(0).strip("\n ")
+        return question, handout, handout_is_a_pic
 
     @property
     def full_answer(self):
@@ -256,8 +274,10 @@ class Game(object):
         description of a tournament
         """
         self.state = None
+        logger.info(f"хотим играть турнир {tournament_id}")
         try:
             tournament_url = self.tournaments_list[tournament_id - 1]["link"]
+            logger.info(f"URL: {tournament_url}")
         except TypeError:
             raise
         except IndexError:
@@ -276,6 +296,7 @@ class Game(object):
         :return: объект Question
         """
         try:
+            logger.info("Начинаем задавать очередной вопрос")
             ct = self.current_tournament
             question = next(ct)
             self.state = (ct.url, ct.current_tour, ct.current_question)
@@ -295,6 +316,7 @@ class Game(object):
                     preface += "\nРедакторы: " + ct.tour_editors[tour_number]
                 if ct.tour_info[tour_number]:
                     preface += "\n" + ct.tour_info[tour_number]
+            logger.info("Успешно получили очередной вопрос")
             return preface, question
         except TypeError:
             raise
