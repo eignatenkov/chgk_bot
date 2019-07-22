@@ -144,7 +144,9 @@ def get_teams_by_town(town):
     return result
 
 
-def get_teams_by_country(country):
+def get_teams_by_country(country=None):
+    if country is None:
+        return None
     i = 1
     result = dict()
     while True:
@@ -179,18 +181,20 @@ def get_player_info(player_id):
     return api_call(url)
 
 
-def get_teams_results_on_tournaments(teams, t_id):
-    teams_set = set(teams)
+def get_teams_results_on_tournaments(t_id, teams=None, top=None):
+    tournament_results = get_tournament_results_by_id(t_id)
+    if teams is not None:
+        tournament_results = [t for t in tournament_results if t["idteam"] in teams]
+    elif top:
+        tournament_results = tournament_results[:top]
 
-    def add_title(team_info):
-        team_info["name"] = teams[team_info["idteam"]]
-        return team_info
-
-    return [
-        add_title(item)
-        for item in get_tournament_results_by_id(t_id)
-        if item["idteam"] in teams_set
-    ]
+    for team in tournament_results:
+        if "current_name" not in team:
+            if teams:
+                team["current_name"] = teams[team["idteam"]]
+            else:
+                team["current_name"] = get_team_info(team["idteam"])["name"]
+    return tournament_results
 
 
 def get_towns_by_country(country):
@@ -208,15 +212,13 @@ def get_towns_by_country(country):
     ]
 
 
-def get_country_results_on_weekend(country="Германия", sunday=None):
+def get_weekend_results(country=None, sunday=None, top=None):
     t_list = get_weekend_tournaments(sunday)
     country_teams = get_teams_by_country(country)
     result = {}
-
     for tnmnt in t_list:
-        t_results = get_teams_results_on_tournaments(
-            country_teams, tnmnt["idtournament"]
-        )
+        t_results = get_teams_results_on_tournaments(tnmnt["idtournament"], teams=country_teams,
+                                                     top=top)
         if len(t_results) > 0:
             result[tnmnt["name"]] = t_results
 
@@ -232,13 +234,13 @@ if __name__ == "__main__":
     # for item in sorted(get_country_results_on_tournament('Германия', 3866),
     #                    key=lambda x: float(x.get('position', 0))):
     #     print(item)
-    for key, value in get_country_results_on_weekend().items():
+    for key, value in get_weekend_results(country="Украинна").items():
         print(key)
         print("Команда\tПозиция\tВзято\tБонус")
         for item in sorted(value, key=lambda x: float(x.get("position", 0))):
             print(
                 "{0}\t{1}\t{2}\t{3}".format(
-                    item.get("name", "-"),
+                    item.get("current_name", "-"),
                     item.get("position", 0),
                     item.get("questions_total", 0),
                     item.get("diff_bonus", 0),

@@ -15,7 +15,7 @@ from telegram import ParseMode, ReplyKeyboardMarkup, TelegramError
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from bot_tools import Game, NextTourError, TournamentError
 from xml_tools import export_tournaments
-from rating_tools import get_country_results_on_weekend
+from rating_tools import get_weekend_results
 
 
 CONTEXT = ssl._create_unverified_context()
@@ -371,16 +371,27 @@ def get_state(bot, update):
         bot.sendMessage(chat_id, text=reply)
 
 
-def current_results(bot, update):
+def current_results(bot, update, args):
     chat_id = update.message.chat_id
     message = ""
-    for key, value in get_country_results_on_weekend().items():
+    logger.info(f"args are {args}")
+    if not args:
+        results = get_weekend_results(country="Германия")
+    elif args[0] == "top":
+        try:
+            top = int(args[1])
+        except:
+            top = 10
+        results = get_weekend_results(top=top)
+    else:
+        results = get_weekend_results(country=args[0])
+    for key, value in results.items():
         message += "*Турнир: {}*\n".format(key.replace("*", "x"))
         message += "Команда\tМесто\tВзято\tБонус\n"
         message += "`------------------------`\n"
         for item in sorted(value, key=lambda x: float(x.get("position", 0))):
             message += "{0}\t{1}\t{2}\t*{3}*\n".format(
-                item.get("name", "-"),
+                item.get("current_name", "-"),
                 item.get("position", 0),
                 item.get("questions_total", 0),
                 item.get("diff_bonus", 0),
@@ -521,7 +532,7 @@ def main():
     dp.add_handler(CommandHandler("state", get_state))
 
     # rating interface, just for fun
-    dp.add_handler(CommandHandler("results", current_results))
+    dp.add_handler(CommandHandler("results", current_results, pass_args=True))
 
     dp.add_handler(MessageHandler([Filters.command], unknown_command))
     dp.add_handler(MessageHandler([], any_message))
