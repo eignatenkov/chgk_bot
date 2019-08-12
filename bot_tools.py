@@ -54,7 +54,7 @@ class Question(object):
             handout_is_a_pic = True
             m = re.search(r"(?<=pic: )\S*(?=\))", question)
             handout = m.group(0).strip("\n ")
-            question = re.sub(r"\(pic: \S*\) \n", "", question).strip("\n ")
+            question = re.sub(r"\(pic: \S*\)[ ]*\n", "", question).strip("\n ")
         if handout and "(pic:" in handout:
             handout_is_a_pic = True
             m = re.search(r"(?<=pic: )\S*(?=\))", handout)
