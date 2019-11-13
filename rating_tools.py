@@ -126,6 +126,15 @@ def get_team_rating(team_id, release_id=None, last=False):
     return api_call(url)
 
 
+def get_team_recaps(team_id, release_id=None, last=False):
+    url = f"http://rating.chgk.info/api/teams/{team_id}/recaps"
+    if release_id:
+        url += f"/{release_id}"
+    elif last:
+        url += "/last"
+    return api_call(url)
+
+
 def get_teams_by_town(town):
     i = 1
     result = dict()
@@ -178,7 +187,23 @@ def get_active_teams():
 
 def get_player_info(player_id):
     url = "http://rating.chgk.info/api/players/{}.json".format(player_id)
-    return api_call(url)
+    return api_call(url)[0]
+
+
+def get_all_players():
+    i = 1
+    result = dict()
+    while True:
+        url = f"https://rating.chgk.info/api/players.json/?page={i}"
+        raw_result = api_call(url)
+        for player in raw_result['items']:
+            p_id = player.pop('idplayer')
+            result[p_id] = player
+        if int(raw_result["total_items"]) < int(raw_result["current_items"].split("-")[-1]):
+            break
+        else:
+            i += 1
+    return result
 
 
 def get_teams_results_on_tournaments(t_id, teams=None, top=None):
@@ -190,10 +215,7 @@ def get_teams_results_on_tournaments(t_id, teams=None, top=None):
 
     for team in tournament_results:
         if "current_name" not in team:
-            if teams:
-                team["current_name"] = teams[team["idteam"]]
-            else:
-                team["current_name"] = get_team_info(team["idteam"])["name"]
+            team["current_name"] = get_team_info(team["idteam"])["name"]
     return tournament_results
 
 
@@ -234,7 +256,7 @@ if __name__ == "__main__":
     # for item in sorted(get_country_results_on_tournament('Германия', 3866),
     #                    key=lambda x: float(x.get('position', 0))):
     #     print(item)
-    for key, value in get_weekend_results(country="Украинна").items():
+    for key, value in get_weekend_results(country="Украина").items():
         print(key)
         print("Команда\tПозиция\tВзято\tБонус")
         for item in sorted(value, key=lambda x: float(x.get("position", 0))):
