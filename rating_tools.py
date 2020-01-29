@@ -81,7 +81,7 @@ def get_tournaments_by_dates(date_start=None, date_end=None):
     if date_start is None:
         date_start = last_sunday - datetime.timedelta(days=3)
     if date_end is None:
-        date_end = last_sunday + datetime.timedelta(days=3)
+        date_end = last_sunday + datetime.timedelta(days=4)
     if date_start > date_end:
         return []
     tournaments_fp = get_tournaments()
