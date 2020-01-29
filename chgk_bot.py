@@ -196,7 +196,7 @@ def ask(bot, update, args):
             chat_id,
             question.question,
             reply_markup=reply_markup,
-            parse_mode=ParseMode.HTML,
+            # parse_mode=ParseMode.HTML,
         )
 
         def read_question(bot):

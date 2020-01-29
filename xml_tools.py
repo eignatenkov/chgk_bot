@@ -30,8 +30,6 @@ def neat(text):
         text = text.replace("*", "\*")
         text = text.replace("<i>", "_")
         text = text.replace("</i>", "_")
-        text = text.replace("<", "\<")
-        text = text.replace(">", "\>")
     return text
 
 
